@@ -166,7 +166,8 @@ preloadAllSprites();
 function getFighterSprite(id, isBeast, action = '') {
   const key = `${id}_${isBeast ? 'beast' : 'human'}${action}`;
   const entry = SPRITE_CACHE[key];
-  if (entry && entry.loaded && !entry.error && entry.img.naturalWidth > 0) {
+  if (entry && !entry.error && (entry.loaded || (entry.img.complete && entry.img.naturalWidth > 0))) {
+    entry.loaded = true;
     return entry.img;
   }
   return null;
@@ -351,7 +352,11 @@ function computePose(state, timer, isBeast) {
 }
 
 function drawFighter(ctx, f, globalTime) {
-  const idleImg = getFighterSprite(f.data.id, f.isBeast, '');
+  const idleImg =
+    getFighterSprite(f.data.id, f.isBeast, '') ||
+    getFighterSprite(f.data.id, f.isBeast, '_walk') ||
+    getFighterSprite(f.data.id, f.isBeast, '_punch') ||
+    getFighterSprite(f.data.id, f.isBeast, '_kick');
   if (idleImg) {
     // Select action sprite during Active & early Recovery phases, or 2-frame Walk stride
     let activeImg = idleImg;
@@ -1041,7 +1046,9 @@ function drawPortrait(canvas, fighter, isBeast = false) {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
   // 1. Prefer newly updated _human.png / _beast.png sprite on Character Select
-  const spriteImg = getFighterSprite(fighter.id, isBeast, '');
+  const spriteImg =
+    getFighterSprite(fighter.id, isBeast, '') ||
+    getFighterSprite(fighter.id, isBeast, '_walk');
   if (spriteImg) {
     const grad = ctx.createRadialGradient(
       canvas.width / 2,
