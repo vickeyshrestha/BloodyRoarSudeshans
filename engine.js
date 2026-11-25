@@ -359,6 +359,7 @@
       f.facing = idx === 0 ? 1 : -1;
       f.health = f.maxHealth;
       f.trailHealth = f.maxHealth;
+      f.beastGauge = 0;
       f.isBeast = false;
       f.state = 'idle';
       f.stateFrame = 0;
@@ -814,16 +815,7 @@
       attacker.comboCount++;
       attacker.comboDisplayTimer = 75;
       if (!attacker.isBeast) attacker.beastGauge = Math.min(100, attacker.beastGauge + 12);
-      if (!defender.isBeast) {
-        defender.beastGauge = Math.min(100, defender.beastGauge + 10);
-      } else {
-        // Taking 4 unblocked hits drains Beast Mode completely
-        defender.beastGauge = Math.max(0, defender.beastGauge - 25);
-        if (defender.beastGauge <= 0) {
-          defender.isBeast = false;
-          spawnFloatingText(defender.x, defender.y - 175, 'BEAST BROKEN!', '#ff8f1f');
-        }
-      }
+      if (!defender.isBeast) defender.beastGauge = Math.min(100, defender.beastGauge + 10);
 
       SoundFX.playHit(spec.heavy);
       SoundFX.playHitVoice(defender.data.id, defender.isBeast);
@@ -947,14 +939,6 @@
 
     if (f.trailHealth > f.health) {
       f.trailHealth = Math.max(f.health, f.trailHealth - 0.55);
-    }
-
-    if (f.isBeast && gameMode === 'FIGHT') {
-      f.beastGauge = Math.max(0, f.beastGauge - 0.13);
-      if (f.beastGauge <= 0) {
-        f.isBeast = false;
-        spawnFloatingText(f.x, f.y - 118, 'REVERT', '#8a92a6');
-      }
     }
 
     if (f.hitFlash > 0) f.hitFlash--;
