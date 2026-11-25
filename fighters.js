@@ -1047,36 +1047,7 @@ function drawPortrait(canvas, fighter, isBeast = false) {
   const ctx = canvas.getContext('2d');
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  // 1. Prefer newly updated _human.png / _beast.png sprite on Character Select
-  const spriteImg =
-    getFighterSprite(fighter.id, isBeast, '') ||
-    getFighterSprite(fighter.id, isBeast, '_walk');
-  if (spriteImg) {
-    const grad = ctx.createRadialGradient(
-      canvas.width / 2,
-      canvas.height / 2,
-      6,
-      canvas.width / 2,
-      canvas.height / 2,
-      canvas.width * 0.72
-    );
-    grad.addColorStop(0, fighter.palette.accent + '44');
-    grad.addColorStop(1, '#080a0f');
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    const iw = spriteImg.naturalWidth;
-    const ih = spriteImg.naturalHeight;
-    const scale = Math.max(canvas.width / iw, canvas.height / ih) * 1.45;
-    const dw = iw * scale;
-    const dh = ih * scale;
-    const dx = (canvas.width - dw) / 2;
-    const dy = Math.min(4, (canvas.height - dh) * 0.08);
-    ctx.drawImage(spriteImg, dx, dy, dw, dh);
-    return;
-  }
-
-  // 2. Fallback to uploaded photo portrait if sprite is not yet added
+  // 1. Always prefer user-provided photo portrait (Munna.jpg, Vickey.jpg, Sumit.jpg, Adheesh.jpg) if available
   if (!isBeast && fighter.portraitSrc) {
     let img = portraitImageCache[fighter.portraitSrc];
     if (!img) {
@@ -1117,6 +1088,35 @@ function drawPortrait(canvas, fighter, isBeast = false) {
     } else {
       img.addEventListener('load', renderPhoto);
     }
+    return;
+  }
+
+  // 2. Otherwise use _human.png / _beast.png sprite if available
+  const spriteImg =
+    getFighterSprite(fighter.id, isBeast, '') ||
+    getFighterSprite(fighter.id, isBeast, '_walk');
+  if (spriteImg) {
+    const grad = ctx.createRadialGradient(
+      canvas.width / 2,
+      canvas.height / 2,
+      6,
+      canvas.width / 2,
+      canvas.height / 2,
+      canvas.width * 0.72
+    );
+    grad.addColorStop(0, fighter.palette.accent + '44');
+    grad.addColorStop(1, '#080a0f');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    const iw = spriteImg.naturalWidth;
+    const ih = spriteImg.naturalHeight;
+    const scale = Math.max(canvas.width / iw, canvas.height / ih) * 1.45;
+    const dw = iw * scale;
+    const dh = ih * scale;
+    const dx = (canvas.width - dw) / 2;
+    const dy = Math.min(4, (canvas.height - dh) * 0.08);
+    ctx.drawImage(spriteImg, dx, dy, dw, dh);
     return;
   }
 

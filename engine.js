@@ -321,8 +321,9 @@
       beastMini.title = `Beast: ${f.beastName}`;
       drawPortrait(beastMini, f, true);
 
-      // Redraw portraits automatically if PNG sprites finish loading after initial render
+      // Redraw portraits automatically if PNG sprites finish loading (skip human if photo exists)
       ['human', 'beast'].forEach((form) => {
+        if (form === 'human' && f.portraitSrc) return;
         const entry = SPRITE_CACHE[`${f.id}_${form}`];
         if (entry && !entry.loaded && !entry.error) {
           entry.img.addEventListener('load', () => {
@@ -737,6 +738,7 @@
       health: data.stats.health,
       trailHealth: data.stats.health,
       beastGauge: 0,
+      beastDrainRate: 0.1,
       isBeast: false,
       roundsWon: 0,
       state: 'idle',
@@ -875,14 +877,15 @@
   function getAttackSpec(fighter, type) {
     const pwr = fighter.data.stats.power;
     const rng = fighter.data.stats.range;
-    const beastMult = fighter.isBeast ? 1.45 : 1.0;
+    // Human form deals 30% damage; Beast form unleashes full 1.45x power
+    const formMult = fighter.isBeast ? 1.45 : 0.3;
 
     if (type === 'punch') {
       return {
         startup: 6,
         active: 6,
         recovery: 10,
-        damage: Math.round((5 + pwr * 0.55) * beastMult),
+        damage: Math.max(1, Math.round((5 + pwr * 0.55) * formMult)),
         range: 64 + rng * 4.5,
         height: 54,
         knockback: 4.5,
@@ -894,7 +897,7 @@
       startup: 10,
       active: 8,
       recovery: 14,
-      damage: Math.round((9 + pwr * 0.95) * beastMult),
+      damage: Math.max(2, Math.round((9 + pwr * 0.95) * formMult)),
       range: 82 + rng * 5.2,
       height: 64,
       knockback: fighter.data.id === 'munna' ? 10.5 : 8.0,
@@ -906,6 +909,8 @@
   function triggerTransform(fighter, opponent) {
     if (fighter.isBeast || fighter.beastGauge < 50) return;
     fighter.isBeast = true;
+    // Deplete Beast Gauge over ~10 seconds (600 frames at 60 FPS)
+    fighter.beastDrainRate = Math.max(0.08, fighter.beastGauge / 600);
     fighter.state = 'transform';
     fighter.stateFrame = 0;
     fighter.vx = 0;
@@ -1243,9 +1248,9 @@
     if (defender.state === 'block') {
       const chipDmg = Math.max(1, Math.round(spec.damage * 0.25));
       defender.health = Math.max(0, defender.health - chipDmg);
-      defender.beastGauge = Math.min(100, defender.beastGauge + 9);
+      defender.beastGauge = Math.min(100, defender.beastGauge + 4.5);
       defender.blockRecoil = 8;
-      attacker.beastGauge = Math.min(100, attacker.beastGauge + 4);
+      attacker.beastGauge = Math.min(100, attacker.beastGauge + 2);
       SoundFX.playBlock();
       spawnHitSparks(impactX, impactY, '#5ea8c9', 10);
       shockwaves.push({
@@ -1268,8 +1273,8 @@
 
       attacker.comboCount++;
       attacker.comboDisplayTimer = 75;
-      if (!attacker.isBeast) attacker.beastGauge = Math.min(100, attacker.beastGauge + 12);
-      if (!defender.isBeast) defender.beastGauge = Math.min(100, defender.beastGauge + 10);
+      if (!attacker.isBeast) attacker.beastGauge = Math.min(100, attacker.beastGauge + 6);
+      if (!defender.isBeast) defender.beastGauge = Math.min(100, defender.beastGauge + 5);
 
       SoundFX.playHit(spec.heavy);
       SoundFX.playHitVoice(defender.data.id, defender.isBeast);
@@ -1454,6 +1459,14 @@
 
     if (f.trailHealth > f.health) {
       f.trailHealth = Math.max(f.health, f.trailHealth - 0.55);
+    }
+
+    if (f.isBeast && gameMode === 'FIGHT') {
+      f.beastGauge = Math.max(0, f.beastGauge - (f.beastDrainRate || 0.1));
+      if (f.beastGauge <= 0) {
+        f.isBeast = false;
+        spawnFloatingText(f.x, f.y - 160, 'REVERT', '#8a92a6');
+      }
     }
 
     if (f.hitFlash > 0) f.hitFlash--;
