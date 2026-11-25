@@ -80,8 +80,9 @@
 
         <!-- SmackDown HCTP-Style Beast Activate Splash -->
         <div id="beast-activate-banner" class="beast-activate-banner hidden">
-          <div class="beast-activate-kicker">BEAST MODE ACTIVATE</div>
+          <div id="beast-activate-kicker" class="beast-activate-kicker">BEAST MODE ACTIVATE</div>
           <div id="beast-activate-name" class="beast-activate-name">- GOAT</div>
+          <div id="beast-activate-quote" class="beast-activate-quote hidden"></div>
         </div>
 
         <!-- In-Game Action Controls Legend (Desktop) -->
@@ -120,9 +121,10 @@
             <span class="title-bloody">BLOODY ROAR</span>
             <span class="title-sub">SUDESHANS EDITION</span>
           </h1>
-          <p class="title-tagline">Unleash your inner beast. Best of 3 rounds.</p>
+          <p class="title-tagline">Unleash your inner beast. 3-Stage Arcade Ladder (Best of 3 rounds).</p>
 
-          <button id="btn-start" class="arcade-btn primary pulse-btn">INSERT COIN / START</button>
+          <button id="btn-start" class="arcade-btn primary pulse-btn">START</button>
+          <p class="pc-notice">Plays best on PC with a keyboard (mobile touch controls also supported).</p>
 
           <div class="controls-card">
             <div class="controls-title">CONTROLS</div>
@@ -182,6 +184,7 @@
 
       <!-- VS Screen Overlay -->
       <div id="vs-screen" class="screen-overlay hidden">
+        <div id="vs-stage-badge" class="arcade-kicker">STAGE 1 OF 3</div>
         <div class="vs-container">
           <div class="vs-side vs-p1">
             <canvas id="vs-p1-canvas" width="220" height="220"></canvas>

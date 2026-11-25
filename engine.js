@@ -34,7 +34,10 @@
   const fightBannerText = document.getElementById('fight-banner-text');
   const fightBannerSub = document.getElementById('fight-banner-sub');
   const beastActivateBanner = document.getElementById('beast-activate-banner');
+  const beastActivateKicker = document.getElementById('beast-activate-kicker');
   const beastActivateName = document.getElementById('beast-activate-name');
+  const beastActivateQuote = document.getElementById('beast-activate-quote');
+  const vsStageBadge = document.getElementById('vs-stage-badge');
 
   const btnStart = document.getElementById('btn-start');
   const btnStoryContinue = document.getElementById('btn-story-continue');
@@ -54,6 +57,8 @@
   let shakeFrames = 0;
   let shakeIntensity = 0;
   let roundNumber = 1;
+  let arcadeStage = 1;
+  let arcadeOpponents = [];
   let roundTimer = 99;
   let timerTicks = 0;
   let bannerTimer = 0;
@@ -117,7 +122,7 @@
   });
   btnCreditsRematch.addEventListener('click', () => {
     SoundFX.playMenuConfirm();
-    startMatch(p1.data, p2.data);
+    startArcadeLadder(p1.data);
   });
   btnCreditsChange.addEventListener('click', () => {
     SoundFX.playMenuSelect();
@@ -274,9 +279,20 @@
   function startMatchFromSelect() {
     SoundFX.playMenuConfirm();
     const playerFighter = FIGHTERS[selectedIndex];
-    const pool = FIGHTERS.filter((f) => f.id !== playerFighter.id);
-    const cpuFighter = pool[Math.floor(Math.random() * pool.length)];
-    startMatch(playerFighter, cpuFighter);
+    startArcadeLadder(playerFighter);
+  }
+
+  function startArcadeLadder(playerFighter) {
+    const nonBossPool = FIGHTERS.filter((f) => f.id !== playerFighter.id && f.id !== 'vickey');
+    // Shuffle non-boss pool for Stage 1 and Stage 2
+    for (let i = nonBossPool.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [nonBossPool[i], nonBossPool[j]] = [nonBossPool[j], nonBossPool[i]];
+    }
+    const boss = getFighterById('vickey');
+    arcadeOpponents = [nonBossPool[0], nonBossPool[1], boss];
+    arcadeStage = 1;
+    startMatch(playerFighter, arcadeOpponents[0]);
   }
 
   function createFighterState(data, x, facing, isCPU) {
@@ -315,9 +331,14 @@
     p2 = createFighterState(f2Data, 700, -1, true);
     roundNumber = 1;
 
+    if (vsStageBadge) {
+      vsStageBadge.textContent =
+        arcadeStage === 3 ? 'STAGE 3 OF 3 • FINAL BOSS' : `STAGE ${arcadeStage} OF 3`;
+    }
     document.getElementById('vs-p1-name').textContent = f1Data.name.toUpperCase();
     document.getElementById('vs-p1-beast').textContent = `BEAST: ${f1Data.beastName.toUpperCase()}`;
-    document.getElementById('vs-p2-name').textContent = f2Data.name.toUpperCase();
+    document.getElementById('vs-p2-name').textContent =
+      arcadeStage === 3 ? `BOSS: ${f2Data.name.toUpperCase()}` : f2Data.name.toUpperCase();
     document.getElementById('vs-p2-beast').textContent = `BEAST: ${f2Data.beastName.toUpperCase()}`;
     drawPortrait(document.getElementById('vs-p1-canvas'), f1Data, false);
     drawPortrait(document.getElementById('vs-p2-canvas'), f2Data, true);
@@ -361,8 +382,18 @@
     showOnlyScreen(null);
     hudEl.classList.remove('hidden');
     updateHUD();
-    showBanner(`ROUND ${roundNumber}`, 'FIGHT!', 75);
+    showBanner(`STAGE ${arcadeStage} • ROUND ${roundNumber}`, 'FIGHT!', 75);
     SoundFX.playRoundStart();
+
+    if (arcadeStage === 3 && roundNumber === 1) {
+      const bossQuotes = [
+        '"I coded this game, so I definitely rigged my own hitboxes!"',
+        '"Still undefeated since 2004 canteen lunch. Prepare to get clawed!"',
+        '"You beat the others... now face the Creator, Director & Stunt Double!"'
+      ];
+      const q = bossQuotes[Math.floor(Math.random() * bossQuotes.length)];
+      showBossIntroBanner(q);
+    }
   }
 
   function showBanner(main, sub = '', duration = 75) {
@@ -373,11 +404,24 @@
   }
 
   function showBeastActivateBanner(beastName) {
+    beastActivateKicker.textContent = 'BEAST MODE ACTIVATE';
     beastActivateName.textContent = `- ${beastName.toUpperCase()}`;
+    beastActivateQuote.classList.add('hidden');
     beastActivateBanner.classList.remove('hidden', 'slam');
     void beastActivateBanner.offsetWidth;
     beastActivateBanner.classList.add('slam');
     beastBannerTimer = 78;
+  }
+
+  function showBossIntroBanner(quote) {
+    beastActivateKicker.textContent = 'HERE COMES THE CLASS BOSS!';
+    beastActivateName.textContent = 'VICKEY SHRESTHA';
+    beastActivateQuote.textContent = quote;
+    beastActivateQuote.classList.remove('hidden');
+    beastActivateBanner.classList.remove('hidden', 'slam');
+    void beastActivateBanner.offsetWidth;
+    beastActivateBanner.classList.add('slam');
+    beastBannerTimer = 155;
   }
 
   // 3-Phase Street Fighter Attack Frame Data
@@ -386,7 +430,7 @@
   function getAttackSpec(fighter, type) {
     const pwr = fighter.data.stats.power;
     const rng = fighter.data.stats.range;
-    const beastMult = fighter.isBeast ? 1.32 : 1.0;
+    const beastMult = fighter.isBeast ? 1.45 : 1.0;
 
     if (type === 'punch') {
       return {
@@ -504,8 +548,8 @@
     f.facing = opponent.x >= f.x ? 1 : -1;
 
     const grounded = f.y >= STAGE.groundY;
-    // ~33% slower, deliberate movement speed
-    const moveSpeed = (1.8 + f.data.stats.speed * 0.24) * (f.isBeast ? 1.15 : 1.0);
+    // Noticeable speed boost in Beast Mode (+32%)
+    const moveSpeed = (1.8 + f.data.stats.speed * 0.24) * (f.isBeast ? 1.32 : 1.0);
 
     let left = false;
     let right = false;
@@ -756,7 +800,16 @@
       attacker.comboCount++;
       attacker.comboDisplayTimer = 75;
       if (!attacker.isBeast) attacker.beastGauge = Math.min(100, attacker.beastGauge + 12);
-      if (!defender.isBeast) defender.beastGauge = Math.min(100, defender.beastGauge + 10);
+      if (!defender.isBeast) {
+        defender.beastGauge = Math.min(100, defender.beastGauge + 10);
+      } else {
+        // Taking 4 unblocked hits drains Beast Mode completely
+        defender.beastGauge = Math.max(0, defender.beastGauge - 25);
+        if (defender.beastGauge <= 0) {
+          defender.isBeast = false;
+          spawnFloatingText(defender.x, defender.y - 175, 'BEAST BROKEN!', '#ff8f1f');
+        }
+      }
 
       SoundFX.playHit(spec.heavy);
       SoundFX.playHitVoice(defender.data.id, defender.isBeast);
@@ -829,6 +882,11 @@
       hudEl.classList.add('hidden');
 
       if (p1Won) {
+        if (arcadeStage < 3) {
+          arcadeStage++;
+          startMatch(p1.data, arcadeOpponents[arcadeStage - 1]);
+          return;
+        }
         gameMode = 'VICTORY_CUTSCENE';
         p1.x = 265;
         p1.y = STAGE.groundY;
@@ -846,7 +904,7 @@
         gameMode = 'MATCH_END';
         document.getElementById('victory-title').textContent = 'CPU WINS!';
         document.getElementById('victory-subtitle').textContent =
-          `${p2.data.name} (Beast: ${p2.data.beastName}) claims victory ${p2.roundsWon} - ${p1.roundsWon}!`;
+          `${p2.data.name} (Beast: ${p2.data.beastName}) claims victory on Stage ${arcadeStage}!`;
         showOnlyScreen(victoryScreen);
       }
     } else {
