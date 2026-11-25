@@ -755,58 +755,69 @@ body {
 
 /* Fantasy Prologue / Story Screen */
 #story-screen {
-  background: #050609;
-}
-
-.prologue-video {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  opacity: 0.42;
-  pointer-events: none;
+  background: radial-gradient(circle at center, rgba(46, 10, 16, 0.94), rgba(5, 6, 9, 0.99));
 }
 
 .story-vignette {
   position: absolute;
   inset: 0;
-  background: radial-gradient(circle at center, rgba(28, 8, 12, 0.35), rgba(5, 6, 9, 0.85));
+  background: radial-gradient(circle at center, rgba(28, 8, 12, 0.3), rgba(5, 6, 9, 0.8));
   pointer-events: none;
 }
 
 .story-card {
   position: relative;
-  max-width: 720px;
-  background: rgba(10, 11, 16, 0.78);
+  max-width: 860px;
+  width: 100%;
+  background: rgba(10, 11, 16, 0.92);
   border: 3px solid #6b141e;
   border-top-color: var(--accent-gold);
   border-radius: 10px;
-  padding: 20px 28px;
+  padding: 18px 22px;
   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.9), 0 0 40px rgba(184, 29, 44, 0.28);
   text-align: left;
   animation: storyFadeIn 0.6s ease-out;
 }
 
-.story-crawl-viewport {
-  height: 225px;
+.story-split {
+  display: flex;
+  align-items: stretch;
+  gap: 20px;
+}
+
+.story-video-pane {
+  width: 220px;
+  flex-shrink: 0;
+  border: 3px solid var(--accent-gold);
+  border-radius: 8px;
   overflow: hidden;
-  perspective: 340px;
-  mask-image: linear-gradient(to bottom, transparent 0%, black 14%, black 88%, transparent 100%);
-  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 14%, black 88%, transparent 100%);
+  background: #000;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.75);
 }
 
-.story-crawl-roll {
-  transform-origin: 50% 100%;
-  animation: starWarsCrawl 26s linear infinite;
+.prologue-video {
+  width: 100%;
+  height: 100%;
+  max-height: 390px;
+  object-fit: cover;
+  display: block;
 }
 
-@keyframes starWarsCrawl {
-  0% {
-    transform: rotateX(16deg) translateY(215px);
+.story-text-pane {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+@media (max-width: 680px) {
+  .story-split {
+    flex-direction: column;
   }
-  100% {
-    transform: rotateX(16deg) translateY(-100%);
+  .story-video-pane {
+    width: 100%;
+    height: 180px;
   }
 }
 

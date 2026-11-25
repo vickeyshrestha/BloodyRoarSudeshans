@@ -302,13 +302,15 @@
 
       <!-- Tekken / Bloody Roar Style Fantasy Prologue -->
       <div id="story-screen" class="screen-overlay hidden">
-        <video id="prologue-video" class="prologue-video" src="assets/Prologue.mp4" loop playsinline muted></video>
         <div class="story-vignette"></div>
-        <div class="story-card">
-          <div class="arcade-kicker story-kicker">PROLOGUE &bull; CLASS OF 2004 (2060 BS)</div>
-          <h2 class="story-title">THE CURSE OF THE CANTEEN</h2>
-          <div class="story-crawl-viewport">
-            <div id="story-crawl-content" class="story-body story-crawl-roll">
+        <div class="story-card story-split">
+          <div class="story-video-pane">
+            <video id="prologue-video" class="prologue-video" src="assets/Prologue.mp4" loop playsinline muted></video>
+          </div>
+          <div class="story-text-pane">
+            <div class="arcade-kicker story-kicker">PROLOGUE &bull; CLASS OF 2004 (2060 BS)</div>
+            <h2 class="story-title">THE CURSE OF THE CANTEEN</h2>
+            <div id="story-crawl-content" class="story-body">
               <p>
                 <span class="story-year">THE YEAR WAS 2060 BS (2004 AD)—JUST A FEW MONTHS BEFORE THE SLC EXAMS.</span> Inside the haunted corridors of <strong>Sudesha Boarding High School</strong>, the hallways ran red with spilled Frooti, chalk dust, and the shattered dreams of unfinished homework. Six classmates forged an unholy blood pact behind the school canteen—swearing to forever carry the primal spirits of their forbidden nicknames: <strong>The Goat</strong>, <strong>The Ant</strong>, <strong>Ganesha</strong>, <strong>The Mouse</strong>, <strong>The Cat</strong>, and <strong>The Elephant</strong>.
               </p>
@@ -319,10 +321,10 @@
                 Fangs will tear. Claws will rip through tailored reunion jackets. Tusks will shatter ribs—and egos. Only one classmate will stand atop the wreckage of the banquet hall to claim the Golden Trophy... and finally prove who was worthy of the class crush all along!
               </p>
             </div>
-          </div>
-          <div class="story-footer" style="gap:10px;">
-            <button id="btn-story-menu" class="arcade-btn secondary">MAIN MENU</button>
-            <button id="btn-story-continue" class="arcade-btn primary pulse-btn">ENTER THE ARENA</button>
+            <div class="story-footer" style="gap:10px;">
+              <button id="btn-story-menu" class="arcade-btn secondary">MAIN MENU</button>
+              <button id="btn-story-continue" class="arcade-btn primary pulse-btn">ENTER THE ARENA</button>
+            </div>
           </div>
         </div>
       </div>

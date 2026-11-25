@@ -13,8 +13,19 @@
     gravity: 0.42 // Reduced gravity paired with ~30% slower jump velocity for grounded weight
   };
 
-  const stageBgImg = new Image();
-  stageBgImg.src = 'assets/background1.jpg';
+  const STAGE_BG_PATHS = Array.from({ length: 10 }, (_, i) => `assets/background${i + 1}.jpg`);
+  const STAGE_BG_IMAGES = STAGE_BG_PATHS.map((src) => {
+    const img = new Image();
+    img.src = src;
+    return img;
+  });
+  let currentStageBg = STAGE_BG_IMAGES[0];
+
+  function pickRandomStageBackground() {
+    const ready = STAGE_BG_IMAGES.filter((im) => im.complete && im.naturalWidth > 0);
+    const pool = ready.length > 0 ? ready : STAGE_BG_IMAGES;
+    currentStageBg = pool[Math.floor(Math.random() * pool.length)];
+  }
 
   // DOM References
   const hudEl = document.getElementById('hud');
@@ -919,6 +930,7 @@
   }
 
   function startMatch(f1Data, f2Data) {
+    pickRandomStageBackground();
     p1 = createFighterState(f1Data, 260, 1, false);
     p2 = createFighterState(f2Data, 700, -1, !onlineRole);
     roundNumber = 1;
@@ -1853,20 +1865,39 @@
     }
   }
 
-  // Stage Background (uses assets/background1.jpg with atmospheric contrast overlay)
+  // Stage Background (random photo from assets/background1..10.jpg, aspect-safe without stretching)
   function drawStage() {
-    if (stageBgImg.complete && stageBgImg.naturalWidth > 0) {
-      const iw = stageBgImg.naturalWidth;
-      const ih = stageBgImg.naturalHeight;
-      const scale = Math.max(STAGE.width / iw, STAGE.height / ih);
-      const dw = iw * scale;
-      const dh = ih * scale;
-      const dx = (STAGE.width - dw) / 2;
-      const dy = (STAGE.height - dh) / 2;
-      ctx.drawImage(stageBgImg, dx, dy, dw, dh);
+    const bg = currentStageBg;
+    if (bg && bg.complete && bg.naturalWidth > 0) {
+      const iw = bg.naturalWidth;
+      const ih = bg.naturalHeight;
+
+      if (iw >= ih) {
+        // Landscape photo: cover cleanly, biased slightly upward so faces stay visible
+        const scale = Math.max(STAGE.width / iw, STAGE.height / ih);
+        const dw = iw * scale;
+        const dh = ih * scale;
+        const dx = (STAGE.width - dw) / 2;
+        const dy = (STAGE.height - dh) * 0.25;
+        ctx.drawImage(bg, dx, dy, dw, dh);
+      } else {
+        // Portrait photo: blurred cover backdrop + sharp uncropped contain center
+        ctx.save();
+        ctx.filter = 'blur(14px) brightness(0.42)';
+        const coverScale = Math.max(STAGE.width / iw, STAGE.height / ih);
+        const cw = iw * coverScale;
+        const ch = ih * coverScale;
+        ctx.drawImage(bg, (STAGE.width - cw) / 2, (STAGE.height - ch) / 2, cw, ch);
+        ctx.restore();
+
+        const containScale = Math.min(STAGE.width / iw, STAGE.height / ih);
+        const dw = iw * containScale;
+        const dh = ih * containScale;
+        ctx.drawImage(bg, (STAGE.width - dw) / 2, (STAGE.height - dh) / 2, dw, dh);
+      }
 
       // Subtle dark contrast overlay so fighters & HUD stay crisp
-      ctx.fillStyle = 'rgba(7, 8, 14, 0.38)';
+      ctx.fillStyle = 'rgba(7, 8, 14, 0.34)';
       ctx.fillRect(0, 0, STAGE.width, STAGE.groundY);
 
       // Grounded floor shadow band below STAGE.groundY
