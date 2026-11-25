@@ -579,6 +579,96 @@ body {
   color: #dbe4ff;
 }
 
+/* Fantasy Prologue / Story Screen */
+#story-screen {
+  background: radial-gradient(circle at center, rgba(46, 10, 16, 0.94), rgba(5, 6, 9, 0.99));
+}
+
+.story-vignette {
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(0, 0, 0, 0.16) 0px,
+    rgba(0, 0, 0, 0.16) 2px,
+    transparent 2px,
+    transparent 4px
+  );
+  pointer-events: none;
+}
+
+.story-card {
+  position: relative;
+  max-width: 720px;
+  background: rgba(10, 11, 16, 0.9);
+  border: 3px solid #6b141e;
+  border-top-color: var(--accent-gold);
+  border-radius: 10px;
+  padding: 22px 28px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.9), 0 0 40px rgba(184, 29, 44, 0.28);
+  text-align: left;
+  animation: storyFadeIn 0.6s ease-out;
+}
+
+.story-kicker {
+  color: var(--accent-red);
+  margin-bottom: 4px;
+}
+
+.story-title {
+  font-size: 30px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  color: var(--accent-gold);
+  text-shadow: 3px 3px 0 #000;
+  margin-bottom: 14px;
+  border-bottom: 2px solid #2b1d24;
+  padding-bottom: 8px;
+}
+
+.story-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  font-size: 14px;
+  line-height: 1.55;
+  color: #d6dbe8;
+}
+
+.story-year {
+  font-weight: 900;
+  color: #fff;
+  letter-spacing: 0.05em;
+}
+
+.story-body strong {
+  color: var(--accent-gold);
+}
+
+.story-gore {
+  color: #f0b6bc;
+  border-left: 3px solid var(--accent-red);
+  padding-left: 12px;
+  font-style: italic;
+}
+
+.story-footer {
+  margin-top: 18px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+@keyframes storyFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 kbd {
   display: inline-block;
   padding: 1px 6px;

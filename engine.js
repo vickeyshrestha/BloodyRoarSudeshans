@@ -19,6 +19,7 @@
   // DOM References
   const hudEl = document.getElementById('hud');
   const titleScreen = document.getElementById('title-screen');
+  const storyScreen = document.getElementById('story-screen');
   const selectScreen = document.getElementById('select-screen');
   const vsScreen = document.getElementById('vs-screen');
   const victoryScreen = document.getElementById('victory-screen');
@@ -36,6 +37,7 @@
   const beastActivateName = document.getElementById('beast-activate-name');
 
   const btnStart = document.getElementById('btn-start');
+  const btnStoryContinue = document.getElementById('btn-story-continue');
   const btnConfirmFighter = document.getElementById('btn-confirm-fighter');
   const btnRematch = document.getElementById('btn-rematch');
   const btnChangeFighter = document.getElementById('btn-change-fighter');
@@ -85,6 +87,8 @@
     keysHeld.add(code);
 
     if (gameMode === 'TITLE' && (code === 'Enter' || code === 'Space')) {
+      goToStory();
+    } else if (gameMode === 'STORY' && (code === 'Enter' || code === 'Space')) {
       goToSelect();
     } else if (gameMode === 'SELECT') {
       handleSelectKey(code);
@@ -98,7 +102,8 @@
   });
 
   // Button Events
-  btnStart.addEventListener('click', goToSelect);
+  btnStart.addEventListener('click', goToStory);
+  btnStoryContinue.addEventListener('click', goToSelect);
   btnConfirmFighter.addEventListener('click', startMatchFromSelect);
   btnRematch.addEventListener('click', () => {
     SoundFX.playMenuConfirm();
@@ -245,8 +250,15 @@
   }
 
   function showOnlyScreen(screen) {
-    [titleScreen, selectScreen, vsScreen, victoryScreen, creditsCutscene].forEach((el) => el.classList.add('hidden'));
+    [titleScreen, storyScreen, selectScreen, vsScreen, victoryScreen, creditsCutscene].forEach((el) => el.classList.add('hidden'));
     if (screen) screen.classList.remove('hidden');
+  }
+
+  function goToStory() {
+    SoundFX.playMenuConfirm();
+    gameMode = 'STORY';
+    hudEl.classList.add('hidden');
+    showOnlyScreen(storyScreen);
   }
 
   function goToSelect() {
