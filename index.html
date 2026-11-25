@@ -162,6 +162,41 @@
             <button id="btn-mode-credits" class="arcade-btn secondary">4. CREDITS</button>
             <button id="btn-mode-scores" class="arcade-btn secondary">ONLINE HIGH SCORES</button>
           </div>
+          <div class="admin-link-row">
+            <a href="#" id="link-admin" class="admin-link">Admin</a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Admin Login Overlay -->
+      <div id="admin-login-screen" class="screen-overlay hidden">
+        <div class="menu-card">
+          <div class="arcade-kicker">RESTRICTED ACCESS</div>
+          <h2 class="menu-title">ADMIN LOGIN</h2>
+          <div style="display:flex; flex-direction:column; gap:10px; text-align:left;">
+            <input id="admin-username" type="text" placeholder="Username" class="online-input" autocomplete="off" />
+            <input id="admin-password" type="password" placeholder="Password" class="online-input" autocomplete="off" />
+          </div>
+          <div id="admin-login-error" class="online-status" style="margin-top:8px; color:#ff4d6d;"></div>
+          <div class="online-footer">
+            <button id="btn-admin-login-back" class="arcade-btn secondary">BACK</button>
+            <button id="btn-admin-login-submit" class="arcade-btn primary">LOGIN</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Admin High Scores Removal Overlay -->
+      <div id="admin-panel-screen" class="screen-overlay hidden">
+        <div class="leaderboard-card">
+          <div class="arcade-kicker">ADMIN • HIGH SCORE MANAGEMENT</div>
+          <h2 class="online-title">REMOVE HIGH SCORES</h2>
+          <div id="admin-scores-list" class="leaderboard-list">
+            <div class="empty-msg">Loading high scores...</div>
+          </div>
+          <div class="online-footer">
+            <button id="btn-admin-clear-all" class="arcade-btn secondary">CLEAR ALL</button>
+            <button id="btn-admin-logout" class="arcade-btn primary">LOGOUT / MAIN MENU</button>
+          </div>
         </div>
       </div>
 

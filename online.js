@@ -207,9 +207,49 @@ const OnlineManager = (() => {
     }
   }
 
+  async function verifyAdminLogin(username, password) {
+    const sb = getClient();
+    if (!sb) return false;
+    const { data, error } = await sb.rpc('admin_verify_login', {
+      p_username: username,
+      p_password: password
+    });
+    if (error) return false;
+    return data === true;
+  }
+
+  function getAdminClient(username, password) {
+    if (!window.supabase || typeof window.supabase.createClient !== 'function') return null;
+    return window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+      global: {
+        headers: {
+          'x-admin-user': username,
+          'x-admin-pass': password
+        }
+      }
+    });
+  }
+
+  async function deleteHighScoreAsAdmin(username, password, id) {
+    const adminSb = getAdminClient(username, password);
+    if (!adminSb) return false;
+    const { error } = await adminSb.from('br_high_scores').delete().eq('id', id);
+    return !error;
+  }
+
+  async function clearAllHighScoresAsAdmin(username, password) {
+    const adminSb = getAdminClient(username, password);
+    if (!adminSb) return false;
+    const { error } = await adminSb.from('br_high_scores').delete().gt('id', 0);
+    return !error;
+  }
+
   return {
     fetchHighScores,
     submitHighScore,
+    verifyAdminLogin,
+    deleteHighScoreAsAdmin,
+    clearAllHighScoresAsAdmin,
     listWaitingRooms,
     hostRoom,
     closeHostedRoom,

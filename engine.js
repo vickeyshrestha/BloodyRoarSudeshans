@@ -21,6 +21,8 @@
   const titleScreen = document.getElementById('title-screen');
   const menuScreen = document.getElementById('menu-screen');
   const optionsScreen = document.getElementById('options-screen');
+  const adminLoginScreen = document.getElementById('admin-login-screen');
+  const adminPanelScreen = document.getElementById('admin-panel-screen');
   const onlineScreen = document.getElementById('online-screen');
   const leaderboardScreen = document.getElementById('leaderboard-screen');
   const storyScreen = document.getElementById('story-screen');
@@ -63,6 +65,15 @@
   const optDifficulty = document.getElementById('opt-difficulty');
   const optTime = document.getElementById('opt-time');
   const optGore = document.getElementById('opt-gore');
+  const linkAdmin = document.getElementById('link-admin');
+  const adminUsernameInput = document.getElementById('admin-username');
+  const adminPasswordInput = document.getElementById('admin-password');
+  const adminLoginError = document.getElementById('admin-login-error');
+  const btnAdminLoginSubmit = document.getElementById('btn-admin-login-submit');
+  const btnAdminLoginBack = document.getElementById('btn-admin-login-back');
+  const adminScoresList = document.getElementById('admin-scores-list');
+  const btnAdminClearAll = document.getElementById('btn-admin-clear-all');
+  const btnAdminLogout = document.getElementById('btn-admin-logout');
   const btnOnlineHost = document.getElementById('btn-online-host');
   const btnOnlineJoin = document.getElementById('btn-online-join');
   const btnRefreshRooms = document.getElementById('btn-refresh-rooms');
@@ -109,6 +120,7 @@
   let onlineSyncTick = 0;
   let standaloneCredits = false;
   let isPaused = false;
+  let adminSession = null; // { username, password } kept only in memory while logged in
   let pendingNextMode = 'arcade'; // 'arcade' | 'online'
   let remoteInput = {
     left: false,
@@ -220,6 +232,17 @@
   btnOptionsBack.addEventListener('click', saveAndCloseOptions);
   btnModeCredits.addEventListener('click', openStandaloneCredits);
   btnModeScores.addEventListener('click', openLeaderboard);
+  linkAdmin.addEventListener('click', (e) => {
+    e.preventDefault();
+    openAdminLogin();
+  });
+  btnAdminLoginBack.addEventListener('click', goToMenu);
+  btnAdminLoginSubmit.addEventListener('click', handleAdminLogin);
+  btnAdminClearAll.addEventListener('click', handleAdminClearAll);
+  btnAdminLogout.addEventListener('click', () => {
+    adminSession = null;
+    goToMenu();
+  });
   btnOnlineHost.addEventListener('click', handleHostRoom);
   btnOnlineJoin.addEventListener('click', () => handleJoinRoom(onlineRoomCodeInput.value));
   btnRefreshRooms.addEventListener('click', refreshOpenRooms);
@@ -418,6 +441,8 @@
       titleScreen,
       menuScreen,
       optionsScreen,
+      adminLoginScreen,
+      adminPanelScreen,
       onlineScreen,
       leaderboardScreen,
       storyScreen,
@@ -479,6 +504,62 @@
   window.addEventListener('beforeunload', () => {
     OnlineManager.closeHostedRoom();
   });
+
+  function openAdminLogin() {
+    SoundFX.playMenuConfirm();
+    gameMode = 'ADMIN_LOGIN';
+    adminUsernameInput.value = '';
+    adminPasswordInput.value = '';
+    adminLoginError.textContent = '';
+    hudEl.classList.add('hidden');
+    showOnlyScreen(adminLoginScreen);
+  }
+
+  async function handleAdminLogin() {
+    const user = (adminUsernameInput.value || '').trim();
+    const pass = adminPasswordInput.value || '';
+    adminLoginError.textContent = 'Verifying...';
+    const ok = await OnlineManager.verifyAdminLogin(user, pass);
+    if (!ok) {
+      adminLoginError.textContent = 'Invalid username or password.';
+      return;
+    }
+    adminSession = { username: user, password: pass };
+    adminLoginError.textContent = '';
+    gameMode = 'ADMIN_PANEL';
+    showOnlyScreen(adminPanelScreen);
+    await loadAdminScores();
+  }
+
+  async function loadAdminScores() {
+    adminScoresList.innerHTML = '<div class="empty-msg">Loading high scores...</div>';
+    const rows = await OnlineManager.fetchHighScores(30);
+    if (!rows.length) {
+      adminScoresList.innerHTML = '<div class="empty-msg">No high scores in database.</div>';
+      return;
+    }
+    adminScoresList.innerHTML = '';
+    rows.forEach((r) => {
+      const row = document.createElement('div');
+      row.className = 'score-row';
+      row.innerHTML = `
+        <span><strong>${escapeHtml(r.player_name)}</strong> (${escapeHtml(getFighterById(r.fighter_id).name)}) &bull; ${r.score} PTS (${r.mode.toUpperCase()})</span>
+        <button class="mini-btn" style="background:#7a1622; border-color:#ff4d6d;">DELETE</button>
+      `;
+      row.querySelector('button').addEventListener('click', async () => {
+        if (!adminSession) return;
+        const deleted = await OnlineManager.deleteHighScoreAsAdmin(adminSession.username, adminSession.password, r.id);
+        if (deleted) await loadAdminScores();
+      });
+      adminScoresList.appendChild(row);
+    });
+  }
+
+  async function handleAdminClearAll() {
+    if (!adminSession) return;
+    await OnlineManager.clearAllHighScoresAsAdmin(adminSession.username, adminSession.password);
+    await loadAdminScores();
+  }
 
   function openOptions() {
     SoundFX.playMenuConfirm();
