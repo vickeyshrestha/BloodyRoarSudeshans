@@ -1,13 +1,13 @@
 :root {
-  --bg-dark: #090b12;
-  --panel-bg: rgba(14, 18, 30, 0.88);
-  --accent-red: #ff2e4c;
-  --accent-gold: #ffc83d;
-  --accent-cyan: #24e5ff;
-  --accent-purple: #b347ff;
-  --text-light: #f4f7ff;
-  --text-muted: #98a4c2;
-  --border-ink: #0a0c12;
+  --bg-dark: #07080c;
+  --panel-bg: rgba(12, 14, 20, 0.92);
+  --accent-red: #b81d2c;
+  --accent-gold: #c99a3b;
+  --accent-cyan: #5ea8c9;
+  --accent-purple: #7d3c68;
+  --text-light: #e6e8ee;
+  --text-muted: #8a92a6;
+  --border-ink: #07080c;
 }
 
 * {
@@ -223,17 +223,18 @@ body {
   font-weight: 900;
   color: var(--accent-cyan);
   text-shadow: 1px 1px 0 #000;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
 }
 
 .beast-bar-outer {
   position: relative;
   flex: 1;
-  max-width: 210px;
+  max-width: 175px;
   height: 11px;
-  background: #101626;
+  background: #0c0f17;
   border: 2px solid #000;
-  border-radius: 4px;
+  border-radius: 2px;
   overflow: hidden;
 }
 

@@ -1,4 +1,4 @@
-// Core 60 FPS Game Loop, Physics, Combat State Machine, Beast Gauge, and CPU AI
+// Core 60 FPS Game Loop, Weighty Physics, Combat State Machine, Beast Gauge, and Approachable CPU AI
 
 (() => {
   const canvas = document.getElementById('game-canvas');
@@ -10,7 +10,7 @@
     groundY: 448,
     leftBound: 56,
     rightBound: 904,
-    gravity: 0.72
+    gravity: 0.42 // Reduced gravity paired with ~30% slower jump velocity for grounded weight
   };
 
   // DOM References
@@ -73,7 +73,6 @@
     }
     keysHeld.add(code);
 
-    // Menu keyboard shortcuts
     if (gameMode === 'TITLE' && (code === 'Enter' || code === 'Space')) {
       goToSelect();
     } else if (gameMode === 'SELECT') {
@@ -214,8 +213,9 @@
       hitstunFrames: 0,
       hitFlash: 0,
       animOffset: isCPU ? 20 : 0,
-      aiCooldown: 12,
-      aiAction: 'approach'
+      aiCooldown: 28,
+      aiAction: 'pause',
+      aiReactionTimer: 0
     };
   }
 
@@ -224,7 +224,6 @@
     p2 = createFighterState(f2Data, 700, -1, true);
     roundNumber = 1;
 
-    // Populate VS Screen
     document.getElementById('vs-p1-name').textContent = f1Data.name.toUpperCase();
     document.getElementById('vs-p1-beast').textContent = `BEAST: ${f1Data.beastName.toUpperCase()}`;
     document.getElementById('vs-p2-name').textContent = f2Data.name.toUpperCase();
@@ -256,6 +255,8 @@
       f.comboDisplayTimer = 0;
       f.hitstunFrames = 0;
       f.hitFlash = 0;
+      f.aiCooldown = 30;
+      f.aiReactionTimer = 0;
     });
 
     particles = [];
@@ -268,7 +269,7 @@
     showOnlyScreen(null);
     hudEl.classList.remove('hidden');
     updateHUD();
-    showBanner(`ROUND ${roundNumber}`, 'FIGHT!', 70);
+    showBanner(`ROUND ${roundNumber}`, 'FIGHT!', 75);
     SoundFX.playRoundStart();
   }
 
@@ -279,7 +280,7 @@
     bannerTimer = duration;
   }
 
-  // Attack Frame Data
+  // Deliberate, Weighty Attack Frame Data (~30-35% slower with clear startup & recovery)
   function getAttackSpec(fighter, type) {
     const pwr = fighter.data.stats.power;
     const rng = fighter.data.stats.range;
@@ -287,26 +288,26 @@
 
     if (type === 'punch') {
       return {
-        startup: fighter.data.id === 'nirbhaya' ? 4 : 5,
-        active: 5,
-        recovery: 7,
+        startup: fighter.data.id === 'nirbhaya' ? 6 : 8,
+        active: 6,
+        recovery: 11,
         damage: Math.round((5 + pwr * 0.55) * beastMult),
-        range: 54 + rng * 3.5,
-        height: 46,
-        knockback: 4.5,
-        hitstun: 13,
+        range: 56 + rng * 3.5,
+        height: 48,
+        knockback: 4.2,
+        hitstun: 16,
         heavy: false
       };
     }
     return {
-      startup: 9,
-      active: 6,
-      recovery: 12,
+      startup: 13,
+      active: 7,
+      recovery: 17,
       damage: Math.round((9 + pwr * 0.95) * beastMult),
-      range: 68 + rng * 4.5,
-      height: 52,
-      knockback: fighter.data.id === 'munna' ? 11.5 : 8.5,
-      hitstun: 20,
+      range: 70 + rng * 4.5,
+      height: 54,
+      knockback: fighter.data.id === 'munna' ? 10.5 : 8.0,
+      hitstun: 24,
       heavy: true
     };
   }
@@ -318,38 +319,42 @@
     fighter.stateFrame = 0;
     fighter.vx = 0;
     SoundFX.playTransform();
-    shakeFrames = 14;
+    shakeFrames = 15;
     shakeIntensity = 7;
 
     shockwaves.push({
       x: fighter.x,
-      y: fighter.y - 54,
-      r: 16,
+      y: fighter.y - 64,
+      r: 18,
       maxR: 135,
       color: fighter.data.palette.accent,
       alpha: 1
     });
 
-    spawnFloatingText(fighter.x, fighter.y - 115, `${fighter.data.beastName.toUpperCase()}!`, fighter.data.palette.accent);
+    spawnFloatingText(
+      fighter.x,
+      fighter.y - 125,
+      `BEAST: ${fighter.data.beastName.toUpperCase()}!`,
+      fighter.data.palette.accent
+    );
 
     // Short-range shockwave hit
     const dist = Math.abs(fighter.x - opponent.x);
     if (dist < 120 && Math.abs(fighter.y - opponent.y) < 90 && opponent.state !== 'ko') {
       const dir = opponent.x >= fighter.x ? 1 : -1;
       opponent.health = Math.max(0, opponent.health - 6);
-      opponent.vx = dir * 10;
-      opponent.vy = -4;
+      opponent.vx = dir * 8.5;
+      opponent.vy = -3.2;
       opponent.state = 'hitstun';
-      opponent.hitstunFrames = 18;
+      opponent.hitstunFrames = 20;
       opponent.hitFlash = 6;
-      spawnHitSparks(opponent.x, opponent.y - 55, '#ffc83d', 12);
+      spawnHitSparks(opponent.x, opponent.y - 64, '#c99a3b', 12);
     }
   }
 
   function updateFighterInput(f, opponent) {
     if (f.state === 'ko' || f.state === 'victory') return;
 
-    // Hitstun / Transform lock
     if (f.state === 'hitstun') {
       f.hitstunFrames--;
       if (f.hitstunFrames <= 0) f.state = 'idle';
@@ -357,16 +362,14 @@
     }
     if (f.state === 'transform') {
       f.stateFrame++;
-      if (f.stateFrame >= 20) f.state = 'idle';
+      if (f.stateFrame >= 24) f.state = 'idle';
       return;
     }
 
-    // Attacking state machine (with Punch -> Kick combo!)
     if (f.state === 'punch' || f.state === 'kick') {
       const spec = getAttackSpec(f, f.state);
       f.stateFrame++;
 
-      // Check hit on active frames
       if (
         !f.hasHitThisAttack &&
         f.stateFrame >= spec.startup &&
@@ -375,7 +378,6 @@
         checkAttackHit(f, opponent, spec);
       }
 
-      // Queue Kick during Punch if player presses S
       if (!f.isCPU && f.state === 'punch' && keysJustPressed.has('KeyS')) {
         f.comboQueued = true;
       }
@@ -396,11 +398,11 @@
       return;
     }
 
-    // Auto-face opponent when idle/walking/blocking
     f.facing = opponent.x >= f.x ? 1 : -1;
 
     const grounded = f.y >= STAGE.groundY;
-    const moveSpeed = (2.7 + f.data.stats.speed * 0.36) * (f.isBeast ? 1.2 : 1.0);
+    // ~33% slower, deliberate movement speed
+    const moveSpeed = (1.8 + f.data.stats.speed * 0.24) * (f.isBeast ? 1.15 : 1.0);
 
     let left = false;
     let right = false;
@@ -448,7 +450,7 @@
       f.stateFrame = 0;
       f.hasHitThisAttack = false;
       f.comboQueued = false;
-      if (grounded) f.vx *= 0.25;
+      if (grounded) f.vx *= 0.2;
       SoundFX.playPunch();
       return;
     }
@@ -457,7 +459,7 @@
       f.state = 'kick';
       f.stateFrame = 0;
       f.hasHitThisAttack = false;
-      if (grounded) f.vx *= 0.25;
+      if (grounded) f.vx *= 0.2;
       SoundFX.playKick();
       return;
     }
@@ -469,7 +471,8 @@
     }
 
     if (up && grounded) {
-      f.vy = f.data.stats.jumpForce;
+      // ~30% reduced jump velocity paired with lower gravity for weighty jump arcs
+      f.vy = f.data.stats.jumpForce * 0.72;
       f.state = 'jump';
       SoundFX.playJump();
       spawnDust(f.x, STAGE.groundY);
@@ -491,6 +494,7 @@
     }
   }
 
+  // Approachable Easy/Normal CPU AI with 400ms-700ms decision cooldown & reaction delay
   function computeCPUInput(cpu, player) {
     const out = {
       left: false,
@@ -507,46 +511,60 @@
     const dist = Math.abs(dx);
     const dirToPlayer = dx >= 0 ? 1 : -1;
 
-    // Transform when gauge is ready and in mid/close range
-    if (!cpu.isBeast && cpu.beastGauge >= 50 && dist < 240 && Math.random() < 0.04) {
-      out.transform = true;
-      return out;
+    // Reaction delay before attempting a ~25% probability block
+    const playerAttacking = player.state === 'punch' || player.state === 'kick';
+    if (playerAttacking && dist < 110) {
+      cpu.aiReactionTimer++;
+      if (cpu.aiReactionTimer >= 12 && cpu.aiAction === 'block_ready') {
+        out.block = true;
+        return out;
+      }
+      if (cpu.aiReactionTimer === 12) {
+        cpu.aiAction = Math.random() < 0.25 ? 'block_ready' : 'pause';
+      }
+    } else {
+      cpu.aiReactionTimer = 0;
+      if (cpu.aiAction === 'block_ready') cpu.aiAction = 'pause';
     }
 
-    // Reactive block if player is attacking nearby
-    if ((player.state === 'punch' || player.state === 'kick') && dist < 115 && Math.random() < 0.45) {
-      out.block = true;
-      return out;
-    }
-
+    // Hold current movement/pause during decision cooldown (24-42 frames = 400ms-700ms)
     if (cpu.aiCooldown > 0) {
       cpu.aiCooldown--;
-      if (cpu.aiAction === 'approach' && dist > 72) {
+      if (cpu.aiAction === 'approach' && dist > 74) {
         out.left = dirToPlayer < 0;
         out.right = dirToPlayer > 0;
-      } else if (cpu.aiAction === 'retreat' && dist < 160) {
+      } else if (cpu.aiAction === 'retreat' && dist < 175) {
         out.left = dirToPlayer > 0;
         out.right = dirToPlayer < 0;
       }
       return out;
     }
 
-    // Choose next tactical decision
-    cpu.aiCooldown = 10 + Math.floor(Math.random() * 14);
+    // New decision every 400ms - 700ms
+    cpu.aiCooldown = 24 + Math.floor(Math.random() * 19);
     const r = Math.random();
 
-    if (dist < 82) {
-      if (r < 0.42) out.punch = true;
-      else if (r < 0.72) out.kick = true;
-      else if (r < 0.86) out.block = true;
+    // Beast transform only occasionally when gauge is ready
+    if (!cpu.isBeast && cpu.beastGauge >= 50 && dist < 210 && r < 0.22) {
+      out.transform = true;
+      return out;
+    }
+
+    if (dist < 85) {
+      if (r < 0.30) out.punch = true;
+      else if (r < 0.52) out.kick = true;
+      else if (r < 0.72) cpu.aiAction = 'pause';
       else cpu.aiAction = 'retreat';
-    } else if (dist < 130) {
-      if (r < 0.35) out.kick = true;
-      else if (r < 0.85) cpu.aiAction = 'approach';
-      else out.up = true;
+    } else if (dist < 140) {
+      if (r < 0.16) out.punch = true; // Occasional whiffed poke
+      else if (r < 0.28) out.kick = true;
+      else if (r < 0.65) cpu.aiAction = 'approach';
+      else if (r < 0.85) cpu.aiAction = 'pause';
+      else cpu.aiAction = 'retreat';
     } else {
-      cpu.aiAction = 'approach';
-      if (r < 0.12) out.up = true;
+      if (r < 0.65) cpu.aiAction = 'approach';
+      else if (r < 0.90) cpu.aiAction = 'pause';
+      else out.up = true;
     }
 
     return out;
@@ -556,11 +574,11 @@
     if (defender.state === 'ko') return;
 
     const hitX = attacker.facing === 1 ? attacker.x + 12 : attacker.x - 12 - spec.range;
-    const hitY = attacker.y - (attacker.state === 'kick' ? 76 : 86);
+    const hitY = attacker.y - (attacker.state === 'kick' ? 80 : 92);
     const hitW = spec.range;
     const hitH = spec.height;
 
-    const defH = defender.state === 'crouch' ? 62 : 98 * defender.data.stats.scale;
+    const defH = defender.state === 'crouch' ? 68 : 112 * defender.data.stats.scale;
     const defW = 46 * defender.data.stats.scale;
     const defX = defender.x - defW / 2;
     const defY = defender.y - defH;
@@ -575,17 +593,16 @@
 
     attacker.hasHitThisAttack = true;
     const impactX = (attacker.x + defender.x) / 2;
-    const impactY = defender.y - 62;
+    const impactY = defender.y - 72;
 
     if (defender.state === 'block') {
-      // 75% damage reduction, no knockback
       const chipDmg = Math.max(1, Math.round(spec.damage * 0.25));
       defender.health = Math.max(0, defender.health - chipDmg);
       defender.beastGauge = Math.min(100, defender.beastGauge + 9);
       attacker.beastGauge = Math.min(100, attacker.beastGauge + 4);
       SoundFX.playBlock();
-      spawnHitSparks(impactX, impactY, '#24e5ff', 8);
-      spawnFloatingText(defender.x, defender.y - 110, 'BLOCK!', '#24e5ff');
+      spawnHitSparks(impactX, impactY, '#5ea8c9', 8);
+      spawnFloatingText(defender.x, defender.y - 120, 'BLOCK!', '#5ea8c9');
       hitstopFrames = 3;
     } else {
       defender.health = Math.max(0, defender.health - spec.damage);
@@ -593,21 +610,22 @@
       defender.hitstunFrames = spec.hitstun;
       defender.hitFlash = 6;
       defender.vx = attacker.facing * spec.knockback;
-      if (spec.heavy) defender.vy = -3.2;
+      if (spec.heavy) defender.vy = -2.4;
 
       attacker.comboCount++;
-      attacker.comboDisplayTimer = 70;
+      attacker.comboDisplayTimer = 75;
       if (!attacker.isBeast) attacker.beastGauge = Math.min(100, attacker.beastGauge + 12);
       if (!defender.isBeast) defender.beastGauge = Math.min(100, defender.beastGauge + 10);
 
       SoundFX.playHit(spec.heavy);
-      spawnHitSparks(impactX, impactY, spec.heavy ? '#ff2e4c' : '#ffd369', spec.heavy ? 15 : 9);
-      spawnFloatingText(defender.x, defender.y - 108, `-${spec.damage}`, spec.heavy ? '#ff4d6d' : '#ffffff');
+      spawnHitSparks(impactX, impactY, spec.heavy ? '#b81d2c' : '#c99a3b', spec.heavy ? 16 : 9);
+      spawnFloatingText(defender.x, defender.y - 118, `-${spec.damage}`, spec.heavy ? '#e04f5f' : '#e6e8ee');
 
-      hitstopFrames = spec.heavy ? 5 : 2;
+      // Weightier hitstop on heavy strikes
+      hitstopFrames = spec.heavy ? 8 : 3;
       if (spec.heavy) {
-        shakeFrames = 7;
-        shakeIntensity = 4;
+        shakeFrames = 8;
+        shakeIntensity = 4.5;
       }
     }
 
@@ -618,18 +636,18 @@
 
   function handleKO(winner, loser) {
     loser.state = 'ko';
-    loser.vx = winner.facing * 7;
-    loser.vy = -6;
+    loser.vx = winner.facing * 6;
+    loser.vy = -4.5;
     winner.state = 'victory';
     winner.roundsWon++;
 
     SoundFX.playKO();
-    hitstopFrames = 10;
+    hitstopFrames = 12;
     shakeFrames = 18;
     shakeIntensity = 9;
 
     gameMode = 'ROUND_END';
-    showBanner('K.O.!', `${winner.data.name.toUpperCase()} TAKES THE ROUND`, 110);
+    showBanner('K.O.!', `${winner.data.name.toUpperCase()} TAKES THE ROUND`, 115);
     updateHUD();
   }
 
@@ -646,7 +664,7 @@
       winner = p2;
     }
     SoundFX.playKO();
-    showBanner('TIME OVER!', winner ? `${winner.data.name.toUpperCase()} WINS ROUND` : 'DRAW ROUND', 110);
+    showBanner('TIME OVER!', winner ? `${winner.data.name.toUpperCase()} WINS ROUND` : 'DRAW ROUND', 115);
     updateHUD();
   }
 
@@ -657,7 +675,7 @@
       const champ = p1Won ? p1 : p2;
       document.getElementById('victory-title').textContent = p1Won ? 'PLAYER 1 WINS!' : 'CPU WINS!';
       document.getElementById('victory-subtitle').textContent =
-        `${champ.data.name} (${champ.data.beastName}) claims victory ${p1.roundsWon} - ${p2.roundsWon}!`;
+        `${champ.data.name} (Beast: ${champ.data.beastName}) claims victory ${p1.roundsWon} - ${p2.roundsWon}!`;
       fightBanner.classList.add('hidden');
       showOnlyScreen(victoryScreen);
     } else {
@@ -673,30 +691,26 @@
     if (f.y < STAGE.groundY) {
       f.vy += STAGE.gravity;
     } else {
-      if (f.vy > 3) spawnDust(f.x, STAGE.groundY);
+      if (f.vy > 2.5) spawnDust(f.x, STAGE.groundY);
       f.y = STAGE.groundY;
       f.vy = 0;
     }
 
-    // Friction in hitstun/ko
     if (f.state === 'hitstun' || f.state === 'ko') {
       f.vx *= 0.86;
     }
 
-    // Clamp to arena
     f.x = Math.max(STAGE.leftBound, Math.min(STAGE.rightBound, f.x));
 
-    // Smooth health trail
     if (f.trailHealth > f.health) {
-      f.trailHealth = Math.max(f.health, f.trailHealth - 0.6);
+      f.trailHealth = Math.max(f.health, f.trailHealth - 0.55);
     }
 
-    // Beast Gauge drain
     if (f.isBeast && gameMode === 'FIGHT') {
-      f.beastGauge = Math.max(0, f.beastGauge - 0.14);
+      f.beastGauge = Math.max(0, f.beastGauge - 0.13);
       if (f.beastGauge <= 0) {
         f.isBeast = false;
-        spawnFloatingText(f.x, f.y - 108, 'REVERT', '#a5b4fc');
+        spawnFloatingText(f.x, f.y - 118, 'REVERT', '#8a92a6');
       }
     }
 
@@ -709,9 +723,9 @@
 
   function resolvePushbox() {
     if (p1.state === 'ko' || p2.state === 'ko') return;
-    const minDist = 46;
+    const minDist = 48;
     const dx = p2.x - p1.x;
-    const verticalClose = Math.abs(p1.y - p2.y) < 70;
+    const verticalClose = Math.abs(p1.y - p2.y) < 75;
     if (verticalClose && Math.abs(dx) < minDist) {
       const push = (minDist - Math.abs(dx)) / 2;
       const dir = dx >= 0 ? 1 : -1;
@@ -720,11 +734,10 @@
     }
   }
 
-  // Particles & FX
   function spawnHitSparks(x, y, color, count) {
     for (let i = 0; i < count; i++) {
       const ang = Math.random() * Math.PI * 2;
-      const spd = 2.5 + Math.random() * 6.5;
+      const spd = 2.2 + Math.random() * 5.8;
       particles.push({
         x,
         y,
@@ -733,7 +746,7 @@
         life: 14 + Math.random() * 10,
         maxLife: 24,
         color,
-        size: 3 + Math.random() * 4
+        size: 2.5 + Math.random() * 3.5
       });
     }
   }
@@ -743,18 +756,18 @@
       particles.push({
         x: x + (Math.random() - 0.5) * 24,
         y: y - 3,
-        vx: (Math.random() - 0.5) * 2.5,
-        vy: -Math.random() * 1.6,
+        vx: (Math.random() - 0.5) * 2.0,
+        vy: -Math.random() * 1.4,
         life: 16,
         maxLife: 16,
-        color: '#b8c4e0',
-        size: 4 + Math.random() * 3
+        color: '#6b7280',
+        size: 3.5 + Math.random() * 3
       });
     }
   }
 
   function spawnFloatingText(x, y, text, color) {
-    floatingTexts.push({ x, y, text, color, life: 36 });
+    floatingTexts.push({ x, y, text, color, life: 38 });
   }
 
   function updateHUD() {
@@ -782,13 +795,18 @@
     trail.style.width = `${trailPct}%`;
     fill.classList.toggle('low', hpPct < 28);
 
+    const beastLabel = document.getElementById(`${prefix}-beast-label`);
+    if (beastLabel) {
+      beastLabel.textContent = `BEAST: ${f.data.beastName.toUpperCase()}`;
+    }
+
     const beastFill = document.getElementById(`${prefix}-beast-fill`);
     beastFill.style.width = `${f.beastGauge}%`;
     beastFill.classList.toggle('ready', !f.isBeast && f.beastGauge >= 50);
     beastFill.classList.toggle('active', f.isBeast);
 
     const badge = document.getElementById(`${prefix}-form-badge`);
-    badge.textContent = f.isBeast ? f.data.beastName.toUpperCase() : 'HUMAN';
+    badge.textContent = f.isBeast ? `BEAST: ${f.data.beastName.toUpperCase()}` : 'HUMAN';
     badge.className = `form-badge ${f.isBeast ? 'beast' : 'human'}`;
 
     const readyTag = document.getElementById(`${prefix}-beast-ready`);
@@ -808,58 +826,54 @@
     }
   }
 
-  // Stage Rendering (Atmospheric Flash-style Dojo / Rooftop Skyline)
+  // Gritty Graphic-Novel Arena Stage
   function drawStage() {
-    // Twilight sky gradient
     const sky = ctx.createLinearGradient(0, 0, 0, STAGE.groundY);
-    sky.addColorStop(0, '#0b1024');
-    sky.addColorStop(0.55, '#1d1e42');
-    sky.addColorStop(1, '#3b1f3b');
+    sky.addColorStop(0, '#07080d');
+    sky.addColorStop(0.55, '#151824');
+    sky.addColorStop(1, '#261822');
     ctx.fillStyle = sky;
     ctx.fillRect(0, 0, STAGE.width, STAGE.groundY);
 
-    // Moon / Spotlight Orb
-    ctx.fillStyle = 'rgba(255, 224, 166, 0.16)';
+    // Overcast Moon / Atmospheric Haze
+    const haze = ctx.createRadialGradient(480, 145, 20, 480, 145, 160);
+    haze.addColorStop(0, 'rgba(214, 198, 170, 0.18)');
+    haze.addColorStop(1, 'rgba(214, 198, 170, 0)');
+    ctx.fillStyle = haze;
     ctx.beginPath();
-    ctx.arc(480, 155, 86, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = '#ffe9b8';
-    ctx.beginPath();
-    ctx.arc(480, 155, 52, 0, Math.PI * 2);
+    ctx.arc(480, 145, 160, 0, Math.PI * 2);
     ctx.fill();
 
-    // Parallax City Skyline
+    // Parallax Industrial / Temple Skyline
     const camOffset = p1 && p2 ? ((p1.x + p2.x) / 2 - 480) * 0.08 : 0;
-    ctx.fillStyle = '#13162b';
+    ctx.fillStyle = '#0d0f17';
     const buildings = [
-      [20, 190, 90], [120, 150, 75], [210, 210, 110], [340, 175, 80],
-      [530, 165, 95], [640, 200, 85], [740, 145, 90], [845, 185, 105]
+      [15, 185, 95], [120, 145, 78], [215, 210, 110], [345, 170, 82],
+      [530, 160, 96], [645, 195, 88], [750, 140, 92], [855, 180, 105]
     ];
     buildings.forEach(([bx, by, bw]) => {
       ctx.fillRect(bx - camOffset, by, bw, STAGE.groundY - by);
     });
 
-    // Arena Floor
+    // Weathered Stone Arena Floor
     const floorGrad = ctx.createLinearGradient(0, STAGE.groundY, 0, STAGE.height);
-    floorGrad.addColorStop(0, '#272f4d');
-    floorGrad.addColorStop(1, '#101424');
+    floorGrad.addColorStop(0, '#222633');
+    floorGrad.addColorStop(1, '#0b0d12');
     ctx.fillStyle = floorGrad;
     ctx.fillRect(0, STAGE.groundY, STAGE.width, STAGE.height - STAGE.groundY);
 
-    // Perspective Floor Grid
-    ctx.strokeStyle = 'rgba(112, 144, 255, 0.25)';
+    // Perspective Stone Slab Lines
+    ctx.strokeStyle = 'rgba(130, 142, 168, 0.16)';
     ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.moveTo(0, STAGE.groundY);
-    ctx.lineTo(STAGE.width, STAGE.groundY);
     for (let i = -5; i <= 5; i++) {
       ctx.moveTo(480 + i * 78 - camOffset * 1.5, STAGE.groundY);
       ctx.lineTo(480 + i * 135 - camOffset * 1.5, STAGE.height);
     }
     ctx.stroke();
 
-    // Glowing arena trim
-    ctx.strokeStyle = '#ff2e4c';
+    // Arena Boundary Trim
+    ctx.strokeStyle = '#751822';
     ctx.lineWidth = 3;
     ctx.beginPath();
     ctx.moveTo(0, STAGE.groundY);
@@ -868,11 +882,10 @@
   }
 
   function renderEffects() {
-    // Shockwaves
     for (let i = shockwaves.length - 1; i >= 0; i--) {
       const s = shockwaves[i];
-      s.r += 9;
-      s.alpha -= 0.06;
+      s.r += 8;
+      s.alpha -= 0.055;
       if (s.alpha <= 0) {
         shockwaves.splice(i, 1);
         continue;
@@ -880,14 +893,13 @@
       ctx.save();
       ctx.globalAlpha = s.alpha;
       ctx.strokeStyle = s.color;
-      ctx.lineWidth = 5;
+      ctx.lineWidth = 4;
       ctx.beginPath();
       ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
       ctx.stroke();
       ctx.restore();
     }
 
-    // Sparks & Dust
     for (let i = particles.length - 1; i >= 0; i--) {
       const pt = particles[i];
       pt.x += pt.vx;
@@ -906,10 +918,9 @@
       ctx.restore();
     }
 
-    // Floating Combat Text
     for (let i = floatingTexts.length - 1; i >= 0; i--) {
       const ft = floatingTexts[i];
-      ft.y -= 1.1;
+      ft.y -= 0.9;
       ft.life--;
       if (ft.life <= 0) {
         floatingTexts.splice(i, 1);
@@ -917,7 +928,7 @@
       }
       ctx.save();
       ctx.globalAlpha = Math.min(1, ft.life / 14);
-      ctx.font = '900 18px "Trebuchet MS", sans-serif';
+      ctx.font = '900 17px "Trebuchet MS", sans-serif';
       ctx.textAlign = 'center';
       ctx.lineWidth = 4;
       ctx.strokeStyle = '#000';
@@ -968,7 +979,6 @@
       updateHUD();
     }
 
-    // Render
     ctx.save();
     if (shakeFrames > 0) {
       shakeFrames--;
