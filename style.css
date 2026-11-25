@@ -1067,9 +1067,11 @@ kbd {
     background: #07080c;
   }
   .utility-bar {
-    top: 8px;
-    bottom: auto;
-    right: 8px;
+    top: auto;
+    bottom: 10px;
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
     display: flex;
     gap: 6px;
   }
