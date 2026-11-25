@@ -94,6 +94,7 @@
   let onlineGuestName = 'Guest';
   let onlineSyncTick = 0;
   let standaloneCredits = false;
+  let pendingNextMode = 'arcade'; // 'arcade' | 'online'
   let remoteInput = {
     left: false,
     right: false,
@@ -147,7 +148,7 @@
     if (gameMode === 'TITLE' && (code === 'Enter' || code === 'Space')) {
       goToMenu();
     } else if (gameMode === 'STORY' && (code === 'Enter' || code === 'Space')) {
-      goToSelect();
+      continueFromStory();
     } else if (gameMode === 'SELECT') {
       handleSelectKey(code);
     } else if (gameMode === 'VS' && (code === 'Enter' || code === 'Space')) {
@@ -166,12 +167,15 @@
   btnModeArcade.addEventListener('click', () => {
     syncPlayerNameFromInput(globalPlayerNameInput.value);
     onlineRole = null;
+    OnlineManager.closeHostedRoom();
     OnlineManager.disconnectChannel();
+    pendingNextMode = 'arcade';
     goToStory();
   });
   btnModeOnline.addEventListener('click', () => {
     syncPlayerNameFromInput(globalPlayerNameInput.value);
-    goToOnline();
+    pendingNextMode = 'online';
+    goToStory();
   });
   btnModeCredits.addEventListener('click', openStandaloneCredits);
   btnModeScores.addEventListener('click', openLeaderboard);
@@ -179,6 +183,7 @@
   btnOnlineJoin.addEventListener('click', () => handleJoinRoom(onlineRoomCodeInput.value));
   btnRefreshRooms.addEventListener('click', refreshOpenRooms);
   btnOnlineBack.addEventListener('click', () => {
+    OnlineManager.closeHostedRoom();
     OnlineManager.disconnectChannel();
     onlineRole = null;
     goToMenu();
@@ -186,7 +191,7 @@
   btnScoresRefresh.addEventListener('click', loadLeaderboard);
   btnScoresBack.addEventListener('click', goToMenu);
 
-  btnStoryContinue.addEventListener('click', goToSelect);
+  btnStoryContinue.addEventListener('click', continueFromStory);
   btnConfirmFighter.addEventListener('click', startMatchFromSelect);
   btnAcceptChallenge.addEventListener('click', acceptBossChallenge);
   btnRematch.addEventListener('click', () => {
@@ -386,12 +391,22 @@
     SoundFX.playMenuConfirm();
     standaloneCredits = false;
     onlineRole = null;
+    OnlineManager.closeHostedRoom();
     OnlineManager.disconnectChannel();
     gameMode = 'MENU';
     syncPlayerNameFromInput(playerName);
     hudEl.classList.add('hidden');
     showOnlyScreen(menuScreen);
   }
+
+  function continueFromStory() {
+    if (pendingNextMode === 'online') goToOnline();
+    else goToSelect();
+  }
+
+  window.addEventListener('beforeunload', () => {
+    OnlineManager.closeHostedRoom();
+  });
 
   function openStandaloneCredits() {
     SoundFX.playMenuConfirm();
@@ -494,6 +509,7 @@
 
       const onlineCallbacks = {
         onGuestJoin: (payload) => {
+          OnlineManager.stopHeartbeat();
           onlineGuestName = payload.guestName || 'Guest';
           const f1 = getFighterById(fighterId);
           const f2 = getFighterById(payload.guestFighter || FIGHTERS[1].id);

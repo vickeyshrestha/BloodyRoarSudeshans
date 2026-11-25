@@ -6,6 +6,8 @@ const OnlineManager = (() => {
 
   let client = null;
   let channel = null;
+  let hostedRoomCode = null;
+  let heartbeatTimer = null;
 
   function getClient() {
     if (!client && window.supabase && typeof window.supabase.createClient === 'function') {
@@ -59,27 +61,57 @@ const OnlineManager = (() => {
   async function listWaitingRooms() {
     const sb = getClient();
     if (!sb) return [];
+    const activeCutoff = new Date(Date.now() - 25000).toISOString();
     const { data, error } = await sb
       .from('br_rooms')
-      .select('code, host_name, host_fighter, status, created_at')
+      .select('code, host_name, host_fighter, status, last_heartbeat, created_at')
       .eq('status', 'waiting')
+      .gte('last_heartbeat', activeCutoff)
       .order('created_at', { ascending: false })
       .limit(8);
     if (error) return [];
     return data || [];
   }
 
+  function stopHeartbeat() {
+    if (heartbeatTimer) {
+      clearInterval(heartbeatTimer);
+      heartbeatTimer = null;
+    }
+  }
+
+  async function closeHostedRoom() {
+    stopHeartbeat();
+    const sb = getClient();
+    if (!sb || !hostedRoomCode) return;
+    const codeToClose = hostedRoomCode;
+    hostedRoomCode = null;
+    await sb.from('br_rooms').update({ status: 'closed' }).eq('code', codeToClose);
+  }
+
   async function hostRoom(hostName, hostFighter) {
     const sb = getClient();
     if (!sb) throw new Error('Supabase client unavailable');
+    await closeHostedRoom();
     const code = generateRoomCode();
+    const nowIso = new Date().toISOString();
     const { error } = await sb.from('br_rooms').insert({
       code,
       host_name: hostName.slice(0, 20),
       host_fighter: hostFighter,
-      status: 'waiting'
+      status: 'waiting',
+      last_heartbeat: nowIso
     });
     if (error) throw error;
+    hostedRoomCode = code;
+    heartbeatTimer = setInterval(async () => {
+      if (!hostedRoomCode) return;
+      await sb
+        .from('br_rooms')
+        .update({ last_heartbeat: new Date().toISOString() })
+        .eq('code', hostedRoomCode)
+        .eq('status', 'waiting');
+    }, 8000);
     return code;
   }
 
@@ -155,6 +187,7 @@ const OnlineManager = (() => {
   }
 
   function disconnectChannel() {
+    stopHeartbeat();
     const sb = getClient();
     if (channel && sb) {
       sb.removeChannel(channel);
@@ -167,6 +200,8 @@ const OnlineManager = (() => {
     submitHighScore,
     listWaitingRooms,
     hostRoom,
+    closeHostedRoom,
+    stopHeartbeat,
     joinRoom,
     connectChannel,
     sendBroadcast,
