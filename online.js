@@ -276,12 +276,39 @@ const OnlineManager = (() => {
     return !error;
   }
 
+  async function logPlayerVisit({ playerName, mode, fighterId }) {
+    const sb = getClient();
+    if (!sb) return false;
+    const loc = await fetchPlayerLocation();
+    const { error } = await sb.from('br_traffic_logs').insert({
+      player_name: (playerName || 'Guest').slice(0, 24),
+      mode: mode || 'arcade',
+      fighter_id: fighterId || null,
+      location: loc
+    });
+    return !error;
+  }
+
+  async function fetchTrafficLogsAsAdmin(username, password, limit = 50) {
+    const adminSb = getAdminClient(username, password);
+    if (!adminSb) return [];
+    const { data, error } = await adminSb
+      .from('br_traffic_logs')
+      .select('id, player_name, mode, fighter_id, location, created_at')
+      .order('created_at', { ascending: false })
+      .limit(limit);
+    if (error) return [];
+    return data || [];
+  }
+
   return {
     fetchHighScores,
     submitHighScore,
     verifyAdminLogin,
     deleteHighScoreAsAdmin,
     clearAllHighScoresAsAdmin,
+    logPlayerVisit,
+    fetchTrafficLogsAsAdmin,
     listWaitingRooms,
     hostRoom,
     closeHostedRoom,

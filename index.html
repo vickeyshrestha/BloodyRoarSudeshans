@@ -200,17 +200,33 @@
         </div>
       </div>
 
-      <!-- Admin High Scores Removal Overlay -->
+      <!-- Admin Panel Overlay (High Scores Removal + Traffic Geo Log) -->
       <div id="admin-panel-screen" class="screen-overlay hidden">
         <div class="leaderboard-card">
-          <div class="arcade-kicker">ADMIN • HIGH SCORE MANAGEMENT</div>
-          <h2 class="online-title">REMOVE HIGH SCORES</h2>
-          <div id="admin-scores-list" class="leaderboard-list">
-            <div class="empty-msg">Loading high scores...</div>
+          <div class="arcade-kicker">ADMIN PANEL</div>
+          <h2 class="online-title" style="margin-bottom:10px;">ADMINISTRATION</h2>
+          <div class="admin-tabs">
+            <button id="btn-admin-tab-scores" class="arcade-btn primary" style="padding:7px 16px; font-size:12px;">REMOVE HIGH SCORES</button>
+            <button id="btn-admin-tab-traffic" class="arcade-btn secondary" style="padding:7px 16px; font-size:12px;">PLAYER TRAFFIC &amp; GEO</button>
           </div>
-          <div class="online-footer">
-            <button id="btn-admin-clear-all" class="arcade-btn secondary">CLEAR ALL</button>
-            <button id="btn-admin-logout" class="arcade-btn primary">LOGOUT / MAIN MENU</button>
+          <div id="admin-scores-pane">
+            <div id="admin-scores-list" class="leaderboard-list">
+              <div class="empty-msg">Loading high scores...</div>
+            </div>
+            <div class="online-footer">
+              <button id="btn-admin-clear-all" class="arcade-btn secondary">CLEAR ALL SCORES</button>
+              <button id="btn-admin-logout" class="arcade-btn primary">LOGOUT / MAIN MENU</button>
+            </div>
+          </div>
+          <div id="admin-traffic-pane" class="hidden">
+            <div id="admin-traffic-summary" class="online-status" style="margin-bottom:6px;"></div>
+            <div id="admin-traffic-list" class="leaderboard-list">
+              <div class="empty-msg">Loading player traffic...</div>
+            </div>
+            <div class="online-footer">
+              <button id="btn-admin-refresh-traffic" class="arcade-btn secondary">REFRESH TRAFFIC</button>
+              <button id="btn-admin-logout-2" class="arcade-btn primary">LOGOUT / MAIN MENU</button>
+            </div>
           </div>
         </div>
       </div>

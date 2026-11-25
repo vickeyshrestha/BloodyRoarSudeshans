@@ -987,6 +987,13 @@ body {
   opacity: 1;
 }
 
+.admin-tabs {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
 .online-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;

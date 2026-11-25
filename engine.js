@@ -107,6 +107,14 @@
   const adminScoresList = document.getElementById('admin-scores-list');
   const btnAdminClearAll = document.getElementById('btn-admin-clear-all');
   const btnAdminLogout = document.getElementById('btn-admin-logout');
+  const btnAdminLogout2 = document.getElementById('btn-admin-logout-2');
+  const btnAdminTabScores = document.getElementById('btn-admin-tab-scores');
+  const btnAdminTabTraffic = document.getElementById('btn-admin-tab-traffic');
+  const adminScoresPane = document.getElementById('admin-scores-pane');
+  const adminTrafficPane = document.getElementById('admin-traffic-pane');
+  const adminTrafficSummary = document.getElementById('admin-traffic-summary');
+  const adminTrafficList = document.getElementById('admin-traffic-list');
+  const btnAdminRefreshTraffic = document.getElementById('btn-admin-refresh-traffic');
   const btnOnlineHost = document.getElementById('btn-online-host');
   const btnOnlineJoin = document.getElementById('btn-online-join');
   const btnRefreshRooms = document.getElementById('btn-refresh-rooms');
@@ -279,6 +287,13 @@
     adminSession = null;
     goToMenu();
   });
+  btnAdminLogout2.addEventListener('click', () => {
+    adminSession = null;
+    goToMenu();
+  });
+  btnAdminTabScores.addEventListener('click', () => switchAdminTab('scores'));
+  btnAdminTabTraffic.addEventListener('click', () => switchAdminTab('traffic'));
+  btnAdminRefreshTraffic.addEventListener('click', loadAdminTraffic);
   btnOnlineHost.addEventListener('click', handleHostRoom);
   btnOnlineJoin.addEventListener('click', () => handleJoinRoom(onlineRoomCodeInput.value));
   btnRefreshRooms.addEventListener('click', refreshOpenRooms);
@@ -589,7 +604,41 @@
     adminLoginError.textContent = '';
     gameMode = 'ADMIN_PANEL';
     showOnlyScreen(adminPanelScreen);
-    await loadAdminScores();
+    switchAdminTab('scores');
+  }
+
+  function switchAdminTab(tab) {
+    const isScores = tab === 'scores';
+    adminScoresPane.classList.toggle('hidden', !isScores);
+    adminTrafficPane.classList.toggle('hidden', isScores);
+    btnAdminTabScores.className = `arcade-btn ${isScores ? 'primary' : 'secondary'}`;
+    btnAdminTabTraffic.className = `arcade-btn ${!isScores ? 'primary' : 'secondary'}`;
+    if (isScores) loadAdminScores();
+    else loadAdminTraffic();
+  }
+
+  async function loadAdminTraffic() {
+    if (!adminSession) return;
+    adminTrafficList.innerHTML = '<div class="empty-msg">Loading player traffic...</div>';
+    const logs = await OnlineManager.fetchTrafficLogsAsAdmin(adminSession.username, adminSession.password, 60);
+    if (!logs.length) {
+      adminTrafficSummary.textContent = '0 recorded visits yet.';
+      adminTrafficList.innerHTML = '<div class="empty-msg">No traffic logs yet.</div>';
+      return;
+    }
+    const uniqueCountries = new Set(logs.map((l) => l.location || 'Unknown'));
+    adminTrafficSummary.textContent = `Recent Visits: ${logs.length} | Distinct Locations: ${uniqueCountries.size}`;
+    adminTrafficList.innerHTML = logs
+      .map((l) => {
+        const dt = l.created_at ? new Date(l.created_at).toLocaleString() : '';
+        const fighterName = l.fighter_id ? getFighterById(l.fighter_id).name : '-';
+        return `
+        <div class="score-row">
+          <span><span class="score-player-name">${escapeHtml(l.player_name)}</span> (<span class="score-char-name">${escapeHtml(fighterName)}</span>) &bull; ${escapeHtml(l.mode.toUpperCase())}</span>
+          <span class="score-loc"><strong>${escapeHtml(l.location || 'Unknown')}</strong> &bull; ${escapeHtml(dt)}</span>
+        </div>`;
+      })
+      .join('');
   }
 
   async function loadAdminScores() {
@@ -732,6 +781,7 @@
   async function handleHostRoom() {
     syncPlayerNameFromInput(onlinePlayerNameInput.value);
     const fighterId = onlineFighterSelect.value || FIGHTERS[0].id;
+    OnlineManager.logPlayerVisit({ playerName, mode: 'online', fighterId });
     onlineStatusEl.textContent = 'Creating room in Supabase...';
     try {
       const code = await OnlineManager.hostRoom(playerName, fighterId);
@@ -789,6 +839,7 @@
       return;
     }
     const fighterId = onlineFighterSelect.value || FIGHTERS[1].id;
+    OnlineManager.logPlayerVisit({ playerName, mode: 'online', fighterId });
     onlineStatusEl.textContent = `Joining room ${code}...`;
     try {
       const room = await OnlineManager.joinRoom(code, playerName, fighterId);
@@ -901,6 +952,7 @@
     arcadeScore = 0;
     liveMatchScore = 0;
     arcadeStartTime = Date.now();
+    OnlineManager.logPlayerVisit({ playerName, mode: 'arcade', fighterId: playerFighter.id });
     const nonBossPool = FIGHTERS.filter((f) => f.id !== playerFighter.id && f.id !== 'vickey');
     // Shuffle non-boss pool for Stages 1-4
     for (let i = nonBossPool.length - 1; i > 0; i--) {
