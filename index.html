@@ -158,8 +158,43 @@
           <div class="menu-buttons">
             <button id="btn-mode-arcade" class="arcade-btn primary">1. ARCADE MODE (5 STAGES)</button>
             <button id="btn-mode-online" class="arcade-btn secondary">2. MULTIPLAYER ONLINE</button>
-            <button id="btn-mode-credits" class="arcade-btn secondary">3. CREDITS</button>
+            <button id="btn-mode-options" class="arcade-btn secondary">3. OPTIONS</button>
+            <button id="btn-mode-credits" class="arcade-btn secondary">4. CREDITS</button>
             <button id="btn-mode-scores" class="arcade-btn secondary">ONLINE HIGH SCORES</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Options Overlay -->
+      <div id="options-screen" class="screen-overlay hidden">
+        <div class="menu-card options-card">
+          <div class="arcade-kicker">GAME SETTINGS</div>
+          <h2 class="menu-title">OPTIONS</h2>
+          <div class="options-grid">
+            <label for="opt-difficulty">CPU DIFFICULTY (SINGLE PLAYER)</label>
+            <select id="opt-difficulty" class="online-input">
+              <option value="easy">Easy (Default)</option>
+              <option value="medium">Medium</option>
+              <option value="hard">Hard</option>
+              <option value="brutal">Brutal</option>
+            </select>
+
+            <label for="opt-time">MATCH TIMER</label>
+            <select id="opt-time" class="online-input">
+              <option value="60">60 Seconds</option>
+              <option value="99" selected>99 Seconds</option>
+              <option value="120">120 Seconds</option>
+              <option value="180">180 Seconds</option>
+            </select>
+
+            <label for="opt-gore">BLOOD &amp; GORE</label>
+            <select id="opt-gore" class="online-input">
+              <option value="on" selected>ON (Mortal Kombat Style)</option>
+              <option value="off">OFF</option>
+            </select>
+          </div>
+          <div class="online-footer">
+            <button id="btn-options-back" class="arcade-btn primary">SAVE &amp; BACK</button>
           </div>
         </div>
       </div>

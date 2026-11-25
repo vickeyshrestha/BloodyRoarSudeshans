@@ -20,6 +20,7 @@
   const hudEl = document.getElementById('hud');
   const titleScreen = document.getElementById('title-screen');
   const menuScreen = document.getElementById('menu-screen');
+  const optionsScreen = document.getElementById('options-screen');
   const onlineScreen = document.getElementById('online-screen');
   const leaderboardScreen = document.getElementById('leaderboard-screen');
   const storyScreen = document.getElementById('story-screen');
@@ -55,8 +56,13 @@
   const btnStart = document.getElementById('btn-start');
   const btnModeArcade = document.getElementById('btn-mode-arcade');
   const btnModeOnline = document.getElementById('btn-mode-online');
+  const btnModeOptions = document.getElementById('btn-mode-options');
   const btnModeCredits = document.getElementById('btn-mode-credits');
   const btnModeScores = document.getElementById('btn-mode-scores');
+  const btnOptionsBack = document.getElementById('btn-options-back');
+  const optDifficulty = document.getElementById('opt-difficulty');
+  const optTime = document.getElementById('opt-time');
+  const optGore = document.getElementById('opt-gore');
   const btnOnlineHost = document.getElementById('btn-online-host');
   const btnOnlineJoin = document.getElementById('btn-online-join');
   const btnRefreshRooms = document.getElementById('btn-refresh-rooms');
@@ -127,9 +133,25 @@
   let p1 = null;
   let p2 = null;
   let particles = [];
+  let bloodDrops = [];
+  let bloodStains = [];
   let floatingTexts = [];
   let shockwaves = [];
   let starbursts = [];
+
+  // Saved Options (Difficulty: easy|medium|hard|brutal, Match Time, Blood & Gore)
+  const savedOpts = (() => {
+    try {
+      return JSON.parse(localStorage.getItem('br_options') || '{}');
+    } catch {
+      return {};
+    }
+  })();
+  const gameOptions = {
+    difficulty: savedOpts.difficulty || 'easy',
+    matchTime: Number(savedOpts.matchTime) || 99,
+    bloodGore: savedOpts.bloodGore !== undefined ? !!savedOpts.bloodGore : true
+  };
 
   // Input Tracking (Strict Mapping)
   const keysHeld = new Set();
@@ -194,6 +216,8 @@
     pendingNextMode = 'online';
     goToStory();
   });
+  btnModeOptions.addEventListener('click', openOptions);
+  btnOptionsBack.addEventListener('click', saveAndCloseOptions);
   btnModeCredits.addEventListener('click', openStandaloneCredits);
   btnModeScores.addEventListener('click', openLeaderboard);
   btnOnlineHost.addEventListener('click', handleHostRoom);
@@ -393,6 +417,7 @@
     [
       titleScreen,
       menuScreen,
+      optionsScreen,
       onlineScreen,
       leaderboardScreen,
       storyScreen,
@@ -454,6 +479,24 @@
   window.addEventListener('beforeunload', () => {
     OnlineManager.closeHostedRoom();
   });
+
+  function openOptions() {
+    SoundFX.playMenuConfirm();
+    gameMode = 'OPTIONS';
+    if (optDifficulty) optDifficulty.value = gameOptions.difficulty;
+    if (optTime) optTime.value = String(gameOptions.matchTime);
+    if (optGore) optGore.value = gameOptions.bloodGore ? 'on' : 'off';
+    hudEl.classList.add('hidden');
+    showOnlyScreen(optionsScreen);
+  }
+
+  function saveAndCloseOptions() {
+    if (optDifficulty) gameOptions.difficulty = optDifficulty.value;
+    if (optTime) gameOptions.matchTime = Number(optTime.value) || 99;
+    if (optGore) gameOptions.bloodGore = optGore.value === 'on';
+    localStorage.setItem('br_options', JSON.stringify(gameOptions));
+    goToMenu();
+  }
 
   function openStandaloneCredits() {
     SoundFX.playMenuConfirm();
@@ -735,9 +778,9 @@
       vx: 0,
       vy: 0,
       facing,
-      maxHealth: data.stats.health,
-      health: data.stats.health,
-      trailHealth: data.stats.health,
+      maxHealth: data.stats.health * 2,
+      health: data.stats.health * 2,
+      trailHealth: data.stats.health * 2,
       beastGauge: 0,
       beastDrainRate: 0.1,
       isBeast: false,
@@ -818,10 +861,12 @@
     });
 
     particles = [];
+    bloodDrops = [];
+    bloodStains = [];
     floatingTexts = [];
     shockwaves = [];
     starbursts = [];
-    roundTimer = 99;
+    roundTimer = onlineRole ? 99 : gameOptions.matchTime;
     timerTicks = 0;
     gameMode = 'ROUND_INTRO';
     introPhase = 1;
@@ -858,7 +903,7 @@
     beastActivateBanner.classList.remove('hidden', 'slam');
     void beastActivateBanner.offsetWidth;
     beastActivateBanner.classList.add('slam');
-    beastBannerTimer = 78;
+    beastBannerTimer = 360; // 6 seconds pop-in and slow fade-out
   }
 
   function showBossIntroBanner(quote) {
@@ -1118,7 +1163,7 @@
     }
   }
 
-  // Approachable Easy/Normal CPU AI with 400ms-700ms decision cooldown & reaction delay
+  // CPU AI scaled by Options Difficulty (easy = original approachable AI)
   function computeCPUInput(cpu, player) {
     const out = {
       left: false,
@@ -1131,27 +1176,33 @@
       transform: false
     };
 
+    const diff = gameOptions.difficulty || 'easy';
+    const diffCfg = {
+      easy: { minCd: 24, cdVar: 19, react: 12, blockProb: 0.25, aggro: 0.52 },
+      medium: { minCd: 16, cdVar: 13, react: 8, blockProb: 0.42, aggro: 0.66 },
+      hard: { minCd: 10, cdVar: 9, react: 4, blockProb: 0.62, aggro: 0.78 },
+      brutal: { minCd: 5, cdVar: 6, react: 1, blockProb: 0.80, aggro: 0.90 }
+    }[diff] || { minCd: 24, cdVar: 19, react: 12, blockProb: 0.25, aggro: 0.52 };
+
     const dx = player.x - cpu.x;
     const dist = Math.abs(dx);
     const dirToPlayer = dx >= 0 ? 1 : -1;
 
-    // Reaction delay before attempting a ~25% probability block
     const playerAttacking = player.state === 'punch' || player.state === 'kick';
-    if (playerAttacking && dist < 110) {
+    if (playerAttacking && dist < 115) {
       cpu.aiReactionTimer++;
-      if (cpu.aiReactionTimer >= 12 && cpu.aiAction === 'block_ready') {
+      if (cpu.aiReactionTimer >= diffCfg.react && cpu.aiAction === 'block_ready') {
         out.block = true;
         return out;
       }
-      if (cpu.aiReactionTimer === 12) {
-        cpu.aiAction = Math.random() < 0.25 ? 'block_ready' : 'pause';
+      if (cpu.aiReactionTimer === diffCfg.react) {
+        cpu.aiAction = Math.random() < diffCfg.blockProb ? 'block_ready' : 'pause';
       }
     } else {
       cpu.aiReactionTimer = 0;
       if (cpu.aiAction === 'block_ready') cpu.aiAction = 'pause';
     }
 
-    // Hold current movement/pause during decision cooldown (24-42 frames = 400ms-700ms)
     if (cpu.aiCooldown > 0) {
       cpu.aiCooldown--;
       if (cpu.aiAction === 'approach' && dist > 74) {
@@ -1164,30 +1215,28 @@
       return out;
     }
 
-    // New decision every 400ms - 700ms
-    cpu.aiCooldown = 24 + Math.floor(Math.random() * 19);
+    cpu.aiCooldown = diffCfg.minCd + Math.floor(Math.random() * diffCfg.cdVar);
     const r = Math.random();
 
-    // Beast transform only occasionally when gauge is ready
-    if (!cpu.isBeast && cpu.beastGauge >= 50 && dist < 210 && r < 0.22) {
+    if (!cpu.isBeast && cpu.beastGauge >= 50 && dist < 240 && r < (diff === 'brutal' ? 0.85 : 0.3)) {
       out.transform = true;
       return out;
     }
 
-    if (dist < 85) {
-      if (r < 0.30) out.punch = true;
-      else if (r < 0.52) out.kick = true;
-      else if (r < 0.72) cpu.aiAction = 'pause';
+    if (dist < 88) {
+      if (r < diffCfg.aggro * 0.58) out.punch = true;
+      else if (r < diffCfg.aggro) out.kick = true;
+      else if (r < 0.82) cpu.aiAction = 'pause';
       else cpu.aiAction = 'retreat';
     } else if (dist < 140) {
-      if (r < 0.16) out.punch = true; // Occasional whiffed poke
-      else if (r < 0.28) out.kick = true;
-      else if (r < 0.65) cpu.aiAction = 'approach';
-      else if (r < 0.85) cpu.aiAction = 'pause';
+      if (r < 0.16) out.punch = true;
+      else if (r < 0.30) out.kick = true;
+      else if (r < 0.72) cpu.aiAction = 'approach';
+      else if (r < 0.88) cpu.aiAction = 'pause';
       else cpu.aiAction = 'retreat';
     } else {
-      if (r < 0.65) cpu.aiAction = 'approach';
-      else if (r < 0.90) cpu.aiAction = 'pause';
+      if (r < 0.72) cpu.aiAction = 'approach';
+      else if (r < 0.92) cpu.aiAction = 'pause';
       else out.up = true;
     }
 
@@ -1280,6 +1329,9 @@
       SoundFX.playHit(spec.heavy);
       SoundFX.playHitVoice(defender.data.id, defender.isBeast);
       spawnHitSparks(impactX, impactY, spec.heavy ? '#ff4d6d' : '#ffd369', spec.heavy ? 18 : 11);
+      if (gameOptions.bloodGore) {
+        spawnBloodSpray(impactX, impactY, attacker.facing, spec.heavy ? 22 : 12);
+      }
       starbursts.push({
         x: impactX,
         y: impactY,
@@ -1543,6 +1595,22 @@
     });
   }
 
+  function spawnBloodSpray(x, y, dir, count) {
+    for (let i = 0; i < count; i++) {
+      const speed = 2.5 + Math.random() * 6.5;
+      const spread = (Math.random() - 0.35) * 1.1;
+      bloodDrops.push({
+        x,
+        y,
+        vx: dir * Math.cos(spread) * speed + (Math.random() - 0.5) * 2.5,
+        vy: -2.0 - Math.random() * 5.0,
+        size: 2.5 + Math.random() * 4.5,
+        color: Math.random() < 0.45 ? '#8c0812' : '#d91122',
+        life: 45 + Math.random() * 25
+      });
+    }
+  }
+
   function spawnHitSparks(x, y, color, count) {
     for (let i = 0; i < count; i++) {
       const ang = Math.random() * Math.PI * 2;
@@ -1699,6 +1767,56 @@
   }
 
   function renderEffects() {
+    // Floor Blood Splatters
+    for (let i = bloodStains.length - 1; i >= 0; i--) {
+      const st = bloodStains[i];
+      st.life--;
+      if (st.life <= 0) {
+        bloodStains.splice(i, 1);
+        continue;
+      }
+      ctx.save();
+      ctx.globalAlpha = Math.min(0.72, st.life / 120);
+      ctx.fillStyle = st.color;
+      ctx.beginPath();
+      ctx.ellipse(st.x, st.y, st.rx, st.ry, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    // Flying Blood Droplets
+    for (let i = bloodDrops.length - 1; i >= 0; i--) {
+      const b = bloodDrops[i];
+      b.x += b.vx;
+      b.y += b.vy;
+      b.vy += 0.38;
+      b.life--;
+      if (b.y >= STAGE.groundY) {
+        if (bloodStains.length < 40) {
+          bloodStains.push({
+            x: b.x,
+            y: STAGE.groundY + (Math.random() * 6 - 2),
+            rx: b.size * 1.6,
+            ry: b.size * 0.55,
+            color: b.color,
+            life: 240
+          });
+        }
+        bloodDrops.splice(i, 1);
+        continue;
+      }
+      if (b.life <= 0) {
+        bloodDrops.splice(i, 1);
+        continue;
+      }
+      ctx.save();
+      ctx.fillStyle = b.color;
+      ctx.beginPath();
+      ctx.arc(b.x, b.y, b.size, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+
     for (let i = shockwaves.length - 1; i >= 0; i--) {
       const s = shockwaves[i];
       s.r += 7;
