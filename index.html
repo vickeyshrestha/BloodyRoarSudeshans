@@ -85,15 +85,24 @@
           <span id="fight-banner-sub" class="fight-banner-sub"></span>
         </div>
 
-        <!-- SmackDown HCTP-Style Beast Activate Splash -->
-        <div id="beast-activate-banner" class="beast-activate-banner p1-theme hidden">
+        <!-- MK-Style Side-Popping Beast Activate Banners (P1 Left, P2 Right) -->
+        <div id="p1-beast-banner" class="beast-side-banner p1-theme left-side hidden">
           <div class="beast-banner-inner">
-            <canvas id="beast-activate-portrait" width="84" height="104" class="beast-passport-pic"></canvas>
+            <canvas id="p1-beast-portrait" width="68" height="84" class="beast-passport-pic"></canvas>
             <div class="beast-banner-text">
-              <div id="beast-activate-kicker" class="beast-activate-kicker">BEAST MODE ACTIVATE</div>
-              <div id="beast-activate-name" class="beast-activate-name">- GOAT</div>
-              <div id="beast-activate-quote" class="beast-activate-quote hidden"></div>
+              <div class="beast-activate-kicker">BEAST MODE ACTIVATE</div>
+              <div id="p1-beast-banner-name" class="beast-activate-name">- GOAT</div>
             </div>
+          </div>
+        </div>
+
+        <div id="p2-beast-banner" class="beast-side-banner p2-theme right-side hidden">
+          <div class="beast-banner-inner">
+            <div class="beast-banner-text" style="text-align:right;">
+              <div class="beast-activate-kicker">BEAST MODE ACTIVATE</div>
+              <div id="p2-beast-banner-name" class="beast-activate-name">- CAT</div>
+            </div>
+            <canvas id="p2-beast-portrait" width="68" height="84" class="beast-passport-pic"></canvas>
           </div>
         </div>
 
@@ -395,6 +404,7 @@
 
       <!-- Player Victory Trophy Cutscene + Funny Credits Overlay -->
       <div id="credits-cutscene" class="credits-overlay hidden">
+        <video id="credits-ending-video" class="credits-ending-video" src="assets/Ending.mp4" loop playsinline></video>
         <div class="credits-panel">
           <div class="credits-header">
             <span class="arcade-kicker">CHAMPION CROWNED!</span>

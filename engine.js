@@ -49,11 +49,13 @@
   const fightBanner = document.getElementById('fight-banner');
   const fightBannerText = document.getElementById('fight-banner-text');
   const fightBannerSub = document.getElementById('fight-banner-sub');
-  const beastActivateBanner = document.getElementById('beast-activate-banner');
-  const beastActivateKicker = document.getElementById('beast-activate-kicker');
-  const beastActivateName = document.getElementById('beast-activate-name');
-  const beastActivateQuote = document.getElementById('beast-activate-quote');
-  const beastActivatePortrait = document.getElementById('beast-activate-portrait');
+  const p1BeastBanner = document.getElementById('p1-beast-banner');
+  const p1BeastBannerName = document.getElementById('p1-beast-banner-name');
+  const p1BeastPortrait = document.getElementById('p1-beast-portrait');
+  const p2BeastBanner = document.getElementById('p2-beast-banner');
+  const p2BeastBannerName = document.getElementById('p2-beast-banner-name');
+  const p2BeastPortrait = document.getElementById('p2-beast-portrait');
+  const creditsEndingVideo = document.getElementById('credits-ending-video');
   const hudScoreBox = document.getElementById('hud-score-box');
   const vsStageBadge = document.getElementById('vs-stage-badge');
 
@@ -142,7 +144,8 @@
   let introPhase = 0; // 0: none, 1: ROUND X flash, 2: FIGHT! flash
   let introTimer = 0;
   let postMatchCallback = null;
-  let beastBannerTimer = 0;
+  let p1BeastBannerTimer = 0;
+  let p2BeastBannerTimer = 0;
   let vsTimer = 0;
   let debugBoxes = false; // Toggle with 'H' key: Blue=Pushbox, Green=Hurtbox, Red=Hitbox
 
@@ -458,6 +461,17 @@
       pauseScreen
     ].forEach((el) => el.classList.add('hidden'));
     if (screen) screen.classList.remove('hidden');
+    if (creditsEndingVideo) {
+      if (screen === creditsCutscene) {
+        creditsEndingVideo.currentTime = 0;
+        creditsEndingVideo.play().catch(() => {
+          creditsEndingVideo.muted = true;
+          creditsEndingVideo.play().catch(() => {});
+        });
+      } else {
+        creditsEndingVideo.pause();
+      }
+    }
     updatePauseButtonVisibility();
   }
 
@@ -985,18 +999,20 @@
   }
 
   function showBeastActivateBanner(fighterData, isPlayer2 = false) {
-    beastActivateBanner.classList.toggle('p1-theme', !isPlayer2);
-    beastActivateBanner.classList.toggle('p2-theme', isPlayer2);
-    beastActivateKicker.textContent = 'BEAST MODE ACTIVATE';
-    beastActivateName.textContent = `- ${fighterData.beastName.toUpperCase()}`;
-    beastActivateQuote.classList.add('hidden');
-    if (beastActivatePortrait) {
-      drawPortrait(beastActivatePortrait, fighterData, true);
+    const banner = isPlayer2 ? p2BeastBanner : p1BeastBanner;
+    const nameEl = isPlayer2 ? p2BeastBannerName : p1BeastBannerName;
+    const portraitEl = isPlayer2 ? p2BeastPortrait : p1BeastPortrait;
+
+    nameEl.textContent = `- ${fighterData.beastName.toUpperCase()}`;
+    if (portraitEl) {
+      drawPortrait(portraitEl, fighterData, true);
     }
-    beastActivateBanner.classList.remove('hidden', 'slam');
-    void beastActivateBanner.offsetWidth;
-    beastActivateBanner.classList.add('slam');
-    beastBannerTimer = 360; // 6 seconds pop-in and slow fade-out
+    banner.classList.remove('hidden', 'mk-pop');
+    void banner.offsetWidth;
+    banner.classList.add('mk-pop');
+
+    if (isPlayer2) p2BeastBannerTimer = 300; // 5 seconds
+    else p1BeastBannerTimer = 300; // 5 seconds
   }
 
   function showBossIntroBanner(quote) {
@@ -2081,10 +2097,16 @@
       }
     }
 
-    if (beastBannerTimer > 0) {
-      beastBannerTimer--;
-      if (beastBannerTimer <= 0) {
-        beastActivateBanner.classList.add('hidden');
+    if (p1BeastBannerTimer > 0) {
+      p1BeastBannerTimer--;
+      if (p1BeastBannerTimer <= 0) {
+        p1BeastBanner.classList.add('hidden');
+      }
+    }
+    if (p2BeastBannerTimer > 0) {
+      p2BeastBannerTimer--;
+      if (p2BeastBannerTimer <= 0) {
+        p2BeastBanner.classList.add('hidden');
       }
     }
 
