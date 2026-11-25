@@ -7,10 +7,11 @@
   const STAGE = {
     width: 960,
     height: 540,
-    groundY: 448,
+    floorTopY: 412, // Back horizon edge of the wooden floor
+    groundY: 488,   // Fighters stand in the middle of the wooden floor (Street Fighter style)
     leftBound: 56,
     rightBound: 904,
-    gravity: 0.42 // Reduced gravity paired with ~30% slower jump velocity for grounded weight
+    gravity: 0.42
   };
 
   const STAGE_BG_PATHS = Array.from({ length: 10 }, (_, i) => `assets/background${i + 1}.jpg`);
@@ -1967,50 +1968,50 @@
 
       // Subtle dark contrast overlay so fighters & HUD stay crisp
       ctx.fillStyle = 'rgba(7, 8, 14, 0.34)';
-      ctx.fillRect(0, 0, STAGE.width, STAGE.groundY);
+      ctx.fillRect(0, 0, STAGE.width, STAGE.floorTopY);
     } else {
-      const sky = ctx.createLinearGradient(0, 0, 0, STAGE.groundY);
+      const sky = ctx.createLinearGradient(0, 0, 0, STAGE.floorTopY);
       sky.addColorStop(0, '#07080d');
       sky.addColorStop(0.55, '#151824');
       sky.addColorStop(1, '#261822');
       ctx.fillStyle = sky;
-      ctx.fillRect(0, 0, STAGE.width, STAGE.groundY);
+      ctx.fillRect(0, 0, STAGE.width, STAGE.floorTopY);
     }
 
-    // Polished Wooden Dojo Floor (flat perspective planks)
-    const floorH = STAGE.height - STAGE.groundY;
-    const woodGrad = ctx.createLinearGradient(0, STAGE.groundY, 0, STAGE.height);
+    // Polished Wooden Dojo Floor (starts at floorTopY; fighters stand in the middle at groundY)
+    const floorH = STAGE.height - STAGE.floorTopY;
+    const woodGrad = ctx.createLinearGradient(0, STAGE.floorTopY, 0, STAGE.height);
     woodGrad.addColorStop(0, '#5a3821');
     woodGrad.addColorStop(0.45, '#422716');
     woodGrad.addColorStop(1, '#24140b');
     ctx.fillStyle = woodGrad;
-    ctx.fillRect(0, STAGE.groundY, STAGE.width, floorH);
+    ctx.fillRect(0, STAGE.floorTopY, STAGE.width, floorH);
 
     // Subtle horizontal plank bands
     ctx.fillStyle = 'rgba(255, 210, 160, 0.04)';
-    ctx.fillRect(0, STAGE.groundY + 14, STAGE.width, 16);
-    ctx.fillRect(0, STAGE.groundY + 48, STAGE.width, 20);
+    ctx.fillRect(0, STAGE.floorTopY + 18, STAGE.width, 20);
+    ctx.fillRect(0, STAGE.floorTopY + 64, STAGE.width, 24);
 
     // Perspective plank seams
     ctx.strokeStyle = 'rgba(18, 9, 4, 0.55)';
     ctx.lineWidth = 2;
     ctx.beginPath();
-    for (let y = STAGE.groundY + 14; y < STAGE.height; y += 22) {
+    for (let y = STAGE.floorTopY + 18; y < STAGE.height; y += 26) {
       ctx.moveTo(0, y);
       ctx.lineTo(STAGE.width, y);
     }
     for (let i = -6; i <= 6; i++) {
-      ctx.moveTo(480 + i * 76, STAGE.groundY);
-      ctx.lineTo(480 + i * 132, STAGE.height);
+      ctx.moveTo(480 + i * 74, STAGE.floorTopY);
+      ctx.lineTo(480 + i * 140, STAGE.height);
     }
     ctx.stroke();
 
-    // Crisp wooden floor trim
+    // Crisp wooden floor horizon trim
     ctx.strokeStyle = '#9c6b3b';
     ctx.lineWidth = 3;
     ctx.beginPath();
-    ctx.moveTo(0, STAGE.groundY);
-    ctx.lineTo(STAGE.width, STAGE.groundY);
+    ctx.moveTo(0, STAGE.floorTopY);
+    ctx.lineTo(STAGE.width, STAGE.floorTopY);
     ctx.stroke();
   }
 

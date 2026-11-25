@@ -393,8 +393,8 @@ function drawSpriteFighter(ctx, f, img, globalTime) {
   const drawH = targetH;
   const drawW = targetH * aspect;
 
-  // Ground cast shadow (stays anchored on the wooden floor at y=448 even during jumps)
-  const heightAboveFloor = Math.max(0, 448 - f.y);
+  // Ground cast shadow (stays anchored on the wooden floor at y=488 even during jumps)
+  const heightAboveFloor = Math.max(0, 488 - f.y);
   const shadowScale = Math.max(0.45, 1 - heightAboveFloor / 260);
   ctx.save();
   ctx.translate(f.x, f.y);
