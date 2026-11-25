@@ -384,7 +384,7 @@
     timerTicks = 0;
     gameMode = 'ROUND_INTRO';
     introPhase = 1;
-    introTimer = 55;
+    introTimer = 120; // 2 seconds hold for Round 1 / Round 2 / Final Round
 
     showOnlyScreen(null);
     hudEl.classList.remove('hidden');
@@ -392,7 +392,7 @@
 
     const roundTitle =
       roundNumber === 1 ? 'ROUND 1' : roundNumber === 2 ? 'ROUND 2' : 'FINAL ROUND';
-    showBanner(roundTitle, arcadeStage === 3 ? 'CLASS BOSS STAGE' : `STAGE ${arcadeStage} OF 3`, 55);
+    showBanner(roundTitle, arcadeStage === 3 ? 'CLASS BOSS STAGE' : `STAGE ${arcadeStage} OF 3`, 120);
     SoundFX.playMenuSelect();
 
     if (arcadeStage === 3 && roundNumber === 1) {
@@ -1268,15 +1268,10 @@
     if (gameMode === 'ROUND_INTRO') {
       introTimer--;
       if (introTimer <= 0) {
-        if (introPhase === 1) {
-          introPhase = 2;
-          introTimer = 38;
-          showBanner('FIGHT!', '', 38);
-          SoundFX.playRoundStart();
-        } else {
-          introPhase = 0;
-          gameMode = 'FIGHT';
-        }
+        introPhase = 0;
+        gameMode = 'FIGHT';
+        showBanner('FIGHT!', '', 90); // 1.5 seconds hold for FIGHT!
+        SoundFX.playRoundStart();
       }
     }
 
