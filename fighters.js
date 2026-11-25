@@ -72,8 +72,8 @@ const FIGHTERS = [
     name: 'Sumit J Thapa',
     beastName: 'Mouse',
     portraitSrc: 'assets/Sumit.jpg',
-    desc: 'Agile brawler with small hitbox, fast startup & low-reaching Beast claws.',
-    stats: { speed: 10, power: 5, range: 4, health: 85, jumpForce: -14.2, scale: 0.85 },
+    desc: 'Lean, feral rodent-humanoid with razor claws & blistering evasion.',
+    stats: { speed: 10, power: 5, range: 4, health: 90, jumpForce: -14.2, scale: 0.88 },
     palette: {
       skin: '#bd8d6c',
       skinShadow: '#825a40',
@@ -116,8 +116,8 @@ const FIGHTERS = [
     name: 'Adheesh Bhandari',
     beastName: 'Elephant',
     portraitSrc: 'assets/Adheesh.jpg',
-    desc: 'Heavy-set juggernaut with massive reach, high health & crushing Elephant impact.',
-    stats: { speed: 4, power: 10, range: 9, health: 138, jumpForce: -11.8, scale: 1.16 },
+    desc: 'Towering juggernaut with thick wrinkled hide, ivory tusks & crushing power.',
+    stats: { speed: 4, power: 10, range: 9, health: 132, jumpForce: -11.8, scale: 1.16 },
     palette: {
       skin: '#a16b49',
       skinShadow: '#694028',
@@ -142,7 +142,7 @@ function getFighterById(id) {
 // Preload multi-action PNG sprites from assets/sprites/
 // Actions: '' (idle), '_punch', '_kick' for both 'human' and 'beast' forms
 const SPRITE_CACHE = {};
-const SPRITE_VERSION = '4';
+const SPRITE_VERSION = '3';
 
 function preloadAllSprites() {
   FIGHTERS.forEach((f) => {
@@ -364,11 +364,9 @@ function drawFighter(ctx, f, globalTime) {
   if (idleImg) {
     // Select action sprite during Active & early Recovery phases, or 2-frame Walk stride
     let activeImg = idleImg;
-    const pStart = f.data.id === 'sumit' ? 4 : f.data.id === 'adheesh' ? 8 : 6;
-    const kStart = f.data.id === 'sumit' ? 8 : f.data.id === 'adheesh' ? 13 : 10;
-    if (f.state === 'punch' && f.stateFrame >= pStart && f.stateFrame < pStart + 11) {
+    if (f.state === 'punch' && f.stateFrame >= 6 && f.stateFrame < 17) {
       activeImg = getFighterSprite(f.data.id, f.isBeast, '_punch') || idleImg;
-    } else if (f.state === 'kick' && f.stateFrame >= kStart && f.stateFrame < kStart + 15) {
+    } else if (f.state === 'kick' && f.stateFrame >= 10 && f.stateFrame < 25) {
       activeImg = getFighterSprite(f.data.id, f.isBeast, '_kick') || idleImg;
     } else if (f.state === 'walk' && Math.floor((f.walkFrame || 0) / 9) % 2 === 1) {
       activeImg = getFighterSprite(f.data.id, f.isBeast, '_walk') || idleImg;
