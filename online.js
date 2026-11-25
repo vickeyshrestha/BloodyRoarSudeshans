@@ -8,6 +8,35 @@ const OnlineManager = (() => {
   let channel = null;
   let hostedRoomCode = null;
   let heartbeatTimer = null;
+  let cachedLocation = null;
+
+  async function fetchPlayerLocation() {
+    if (cachedLocation) return cachedLocation;
+    try {
+      const res = await fetch('https://ipapi.co/json/', { signal: AbortSignal.timeout(3000) });
+      if (res.ok) {
+        const j = await res.json();
+        const parts = [j.city, j.country_name].filter(Boolean);
+        if (parts.length) {
+          cachedLocation = parts.join(', ');
+          return cachedLocation;
+        }
+      }
+    } catch {}
+    try {
+      const res2 = await fetch('https://ipwho.is/', { signal: AbortSignal.timeout(3000) });
+      if (res2.ok) {
+        const j2 = await res2.json();
+        const parts = [j2.city, j2.country].filter(Boolean);
+        if (parts.length) {
+          cachedLocation = parts.join(', ');
+          return cachedLocation;
+        }
+      }
+    } catch {}
+    cachedLocation = 'Unknown';
+    return cachedLocation;
+  }
 
   function getClient() {
     if (!client && window.supabase && typeof window.supabase.createClient === 'function') {
@@ -25,12 +54,12 @@ const OnlineManager = (() => {
     return code;
   }
 
-  async function fetchHighScores(limit = 12) {
+  async function fetchHighScores(limit = 15) {
     const sb = getClient();
     if (!sb) return [];
     const { data, error } = await sb
       .from('br_high_scores')
-      .select('id, player_name, fighter_id, mode, score, wins, created_at')
+      .select('id, player_name, fighter_id, mode, score, wins, location, clear_time, created_at')
       .order('score', { ascending: false })
       .order('created_at', { ascending: false })
       .limit(limit);
@@ -41,15 +70,18 @@ const OnlineManager = (() => {
     return data || [];
   }
 
-  async function submitHighScore({ playerName, fighterId, mode, score, wins }) {
+  async function submitHighScore({ playerName, fighterId, mode, score, wins, clearTime = null }) {
     const sb = getClient();
     if (!sb || !playerName) return false;
+    const loc = await fetchPlayerLocation();
     const { error } = await sb.from('br_high_scores').insert({
       player_name: playerName.slice(0, 24),
       fighter_id: fighterId,
       mode,
       score: Math.max(0, Math.round(score)),
-      wins: Math.max(0, Math.round(wins))
+      wins: Math.max(0, Math.round(wins)),
+      location: loc,
+      clear_time: clearTime
     });
     if (error) {
       console.warn('High score insert error:', error.message);

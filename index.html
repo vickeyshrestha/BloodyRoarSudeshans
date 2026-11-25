@@ -50,6 +50,7 @@
             <div id="stage-badge" class="stage-badge">STAGE 1 / 3</div>
             <div id="round-label" class="round-label">ROUND 1</div>
             <div id="timer-box" class="timer-box">99</div>
+            <div id="hud-score-box" class="hud-score-box">SCORE: 0</div>
           </div>
 
           <!-- CPU / Player 2 -->
@@ -85,10 +86,15 @@
         </div>
 
         <!-- SmackDown HCTP-Style Beast Activate Splash -->
-        <div id="beast-activate-banner" class="beast-activate-banner hidden">
-          <div id="beast-activate-kicker" class="beast-activate-kicker">BEAST MODE ACTIVATE</div>
-          <div id="beast-activate-name" class="beast-activate-name">- GOAT</div>
-          <div id="beast-activate-quote" class="beast-activate-quote hidden"></div>
+        <div id="beast-activate-banner" class="beast-activate-banner p1-theme hidden">
+          <div class="beast-banner-inner">
+            <canvas id="beast-activate-portrait" width="84" height="104" class="beast-passport-pic"></canvas>
+            <div class="beast-banner-text">
+              <div id="beast-activate-kicker" class="beast-activate-kicker">BEAST MODE ACTIVATE</div>
+              <div id="beast-activate-name" class="beast-activate-name">- GOAT</div>
+              <div id="beast-activate-quote" class="beast-activate-quote hidden"></div>
+            </div>
+          </div>
         </div>
 
         <!-- In-Game Action Controls Legend (Desktop) -->

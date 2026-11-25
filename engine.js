@@ -53,6 +53,8 @@
   const beastActivateKicker = document.getElementById('beast-activate-kicker');
   const beastActivateName = document.getElementById('beast-activate-name');
   const beastActivateQuote = document.getElementById('beast-activate-quote');
+  const beastActivatePortrait = document.getElementById('beast-activate-portrait');
+  const hudScoreBox = document.getElementById('hud-score-box');
   const vsStageBadge = document.getElementById('vs-stage-badge');
 
   const btnStart = document.getElementById('btn-start');
@@ -113,6 +115,8 @@
   let arcadeStage = 1;
   let arcadeOpponents = [];
   let arcadeScore = 0;
+  let arcadeStartTime = 0;
+  let liveMatchScore = 0;
   let playerName = localStorage.getItem('br_player_name') || 'Sudeshan';
   let onlineRole = null; // null | 'host' | 'guest'
   let onlineHostName = 'Host';
@@ -613,7 +617,7 @@
       .map(
         (r, i) => `
         <div class="score-row">
-          <span><strong>#${i + 1}</strong> ${escapeHtml(r.player_name)} (${escapeHtml(getFighterById(r.fighter_id).name)})</span>
+          <span><strong>#${i + 1}</strong> <span class="score-player-name">${escapeHtml(r.player_name)}</span> (<span class="score-char-name">${escapeHtml(getFighterById(r.fighter_id).name)}</span>) <span class="score-loc">&bull; ${escapeHtml(r.location || 'Unknown')}${r.clear_time ? ` &bull; ${escapeHtml(r.clear_time)}` : ''}</span></span>
           <span><strong>${r.score} PTS</strong> &bull; ${r.mode.toUpperCase()}</span>
         </div>`
       )
@@ -838,6 +842,8 @@
   function startArcadeLadder(playerFighter) {
     onlineRole = null;
     arcadeScore = 0;
+    liveMatchScore = 0;
+    arcadeStartTime = Date.now();
     const nonBossPool = FIGHTERS.filter((f) => f.id !== playerFighter.id && f.id !== 'vickey');
     // Shuffle non-boss pool for Stages 1-4
     for (let i = nonBossPool.length - 1; i > 0; i--) {
@@ -887,6 +893,7 @@
     p1 = createFighterState(f1Data, 260, 1, false);
     p2 = createFighterState(f2Data, 700, -1, !onlineRole);
     roundNumber = 1;
+    if (onlineRole) liveMatchScore = 0;
 
     if (vsStageBadge) {
       if (onlineRole) {
@@ -977,10 +984,15 @@
     bannerTimer = duration;
   }
 
-  function showBeastActivateBanner(beastName) {
+  function showBeastActivateBanner(fighterData, isPlayer2 = false) {
+    beastActivateBanner.classList.toggle('p1-theme', !isPlayer2);
+    beastActivateBanner.classList.toggle('p2-theme', isPlayer2);
     beastActivateKicker.textContent = 'BEAST MODE ACTIVATE';
-    beastActivateName.textContent = `- ${beastName.toUpperCase()}`;
+    beastActivateName.textContent = `- ${fighterData.beastName.toUpperCase()}`;
     beastActivateQuote.classList.add('hidden');
+    if (beastActivatePortrait) {
+      drawPortrait(beastActivatePortrait, fighterData, true);
+    }
     beastActivateBanner.classList.remove('hidden', 'slam');
     void beastActivateBanner.offsetWidth;
     beastActivateBanner.classList.add('slam');
@@ -1042,7 +1054,7 @@
     fighter.stateFrame = 0;
     fighter.vx = 0;
     SoundFX.playTransform(fighter.data.id);
-    showBeastActivateBanner(fighter.data.beastName);
+    showBeastActivateBanner(fighter.data, fighter === p2);
     shakeFrames = 15;
     shakeIntensity = 7;
 
@@ -1404,6 +1416,10 @@
 
       attacker.comboCount++;
       attacker.comboDisplayTimer = 75;
+      const localAttacker = onlineRole === 'guest' ? attacker === p2 : attacker === p1;
+      if (localAttacker) {
+        liveMatchScore += spec.damage * 10 + (attacker.comboCount > 1 ? attacker.comboCount * 15 : 0);
+      }
       if (!attacker.isBeast) attacker.beastGauge = Math.min(100, attacker.beastGauge + 6);
       if (!defender.isBeast) defender.beastGauge = Math.min(100, defender.beastGauge + 5);
 
@@ -1480,7 +1496,8 @@
 
       if (!onlineRole) {
         if (p1Won) {
-          arcadeScore += 500 + Math.round(p1.health * 5);
+          arcadeScore = Math.max(arcadeScore, liveMatchScore) + 500 + Math.round(p1.health * 5);
+          liveMatchScore = arcadeScore;
           if (arcadeStage < 5) {
             gameMode = 'POST_MATCH_BANNER';
             showBanner('YOU WIN!', `ADVANCING TO ${arcadeStage + 1 === 5 ? 'FINAL STAGE' : `STAGE ${arcadeStage + 1}`}`, 240);
@@ -1490,12 +1507,17 @@
             };
             return;
           }
+          const elapsedSec = Math.max(1, Math.round((Date.now() - arcadeStartTime) / 1000));
+          const mins = String(Math.floor(elapsedSec / 60)).padStart(2, '0');
+          const secs = String(elapsedSec % 60).padStart(2, '0');
+          const clearTime = `${mins}:${secs}`;
           OnlineManager.submitHighScore({
             playerName,
             fighterId: p1.data.id,
             mode: 'arcade',
             score: arcadeScore + 1000,
-            wins: 5
+            wins: 5,
+            clearTime
           });
           gameMode = 'POST_MATCH_BANNER';
           showBanner('YOU WIN!', 'TOURNAMENT CHAMPION!', 240);
@@ -1518,15 +1540,7 @@
             showOnlyScreen(creditsCutscene);
           };
         } else {
-          if (arcadeScore > 0) {
-            OnlineManager.submitHighScore({
-              playerName,
-              fighterId: p1.data.id,
-              mode: 'arcade',
-              score: arcadeScore,
-              wins: arcadeStage - 1
-            });
-          }
+          // Arcade loss: do not store unfinished run on scoreboard
           gameMode = 'POST_MATCH_BANNER';
           showBanner('YOU LOSE!', `${p2.data.name.toUpperCase()} TAKES THE MATCH`, 240);
           postMatchCallback = () => {
@@ -1566,15 +1580,18 @@
     const localIsP1 = onlineRole === 'host';
     const localFighter = localIsP1 ? p1 : p2;
     const localWon = (localIsP1 && p1Won) || (!localIsP1 && !p1Won);
-    const matchScore = (localWon ? 1000 : 250) + Math.round(localFighter.health * 5);
+    const matchScore = Math.max(liveMatchScore, 500) + 1000 + Math.round(localFighter.health * 5);
 
-    OnlineManager.submitHighScore({
-      playerName,
-      fighterId: localFighter.data.id,
-      mode: 'online',
-      score: matchScore,
-      wins: localWon ? 1 : 0
-    });
+    // Online Mode: only store the winner on the scoreboard
+    if (localWon) {
+      OnlineManager.submitHighScore({
+        playerName,
+        fighterId: localFighter.data.id,
+        mode: 'online',
+        score: matchScore,
+        wins: 1
+      });
+    }
 
     gameMode = 'POST_MATCH_BANNER';
     showBanner(
@@ -1749,6 +1766,10 @@
     const timerBox = document.getElementById('timer-box');
     timerBox.textContent = String(roundTimer).padStart(2, '0');
     timerBox.classList.toggle('urgent', roundTimer <= 15);
+
+    if (hudScoreBox) {
+      hudScoreBox.textContent = `SCORE: ${liveMatchScore}`;
+    }
 
     updateFighterHUD('p1', p1);
     updateFighterHUD('p2', p2);
