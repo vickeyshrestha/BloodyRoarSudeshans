@@ -5,6 +5,7 @@ const FIGHTERS = [
     id: 'munna',
     name: 'Munna Thapa',
     beastName: 'Goat',
+    portraitSrc: 'assets/Munna.jpg',
     desc: 'Agile mountain striker with heavy ridged horns & devastating kick knockback.',
     stats: { speed: 7, power: 7, range: 6, health: 105, jumpForce: -14.8, scale: 1.0 },
     palette: {
@@ -767,9 +768,55 @@ function drawRealisticBeastHead(ctx, data, pal, isFlashing) {
   ctx.fill();
 }
 
+const portraitImageCache = {};
+
 function drawPortrait(canvas, fighter, isBeast = false) {
   const ctx = canvas.getContext('2d');
   ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  if (!isBeast && fighter.portraitSrc) {
+    let img = portraitImageCache[fighter.portraitSrc];
+    if (!img) {
+      img = new Image();
+      img.src = fighter.portraitSrc;
+      portraitImageCache[fighter.portraitSrc] = img;
+    }
+
+    const renderPhoto = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      const iw = img.naturalWidth || img.width;
+      const ih = img.naturalHeight || img.height;
+      if (iw && ih) {
+        const scale = Math.max(canvas.width / iw, canvas.height / ih);
+        const dw = iw * scale;
+        const dh = ih * scale;
+        const dx = (canvas.width - dw) / 2;
+        const dy = Math.min(0, (canvas.height - dh) * 0.2);
+        ctx.drawImage(img, dx, dy, dw, dh);
+
+        // Subtle gritty vignette around face portrait
+        const vig = ctx.createRadialGradient(
+          canvas.width / 2,
+          canvas.height / 2,
+          canvas.width * 0.28,
+          canvas.width / 2,
+          canvas.height / 2,
+          canvas.width * 0.72
+        );
+        vig.addColorStop(0, 'rgba(0,0,0,0)');
+        vig.addColorStop(1, 'rgba(7,8,12,0.55)');
+        ctx.fillStyle = vig;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+      }
+    };
+
+    if (img.complete && img.naturalWidth > 0) {
+      renderPhoto();
+    } else {
+      img.addEventListener('load', renderPhoto);
+    }
+    return;
+  }
 
   const grad = ctx.createRadialGradient(
     canvas.width / 2,
@@ -779,7 +826,7 @@ function drawPortrait(canvas, fighter, isBeast = false) {
     canvas.height / 2,
     canvas.width * 0.7
   );
-  grad.addColorStop(0, fighter.palette.accent + '33');
+  grad.addColorStop(0, fighter.palette.accent + '44');
   grad.addColorStop(1, '#080a0f');
   ctx.fillStyle = grad;
   ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -790,15 +837,16 @@ function drawPortrait(canvas, fighter, isBeast = false) {
     y: 0,
     facing: 1,
     isBeast,
-    state: isBeast ? 'victory' : 'idle',
+    state: 'idle',
     stateFrame: 0,
     hitFlash: 0,
     animOffset: 0
   };
 
+  // Close-up face & shoulders bust framing for character select & VS screen
   ctx.save();
-  const s = canvas.width / 128;
-  ctx.translate(canvas.width * 0.5, canvas.height * 0.94);
+  const s = (canvas.width / 48) / fighter.stats.scale;
+  ctx.translate(canvas.width * 0.48, canvas.height * 2.28);
   ctx.scale(s, s);
   drawFighter(ctx, mock, 12);
   ctx.restore();

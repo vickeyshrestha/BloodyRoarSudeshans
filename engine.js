@@ -13,6 +13,9 @@
     gravity: 0.42 // Reduced gravity paired with ~30% slower jump velocity for grounded weight
   };
 
+  const stageBgImg = new Image();
+  stageBgImg.src = 'assets/background1.jpg';
+
   // DOM References
   const hudEl = document.getElementById('hud');
   const titleScreen = document.getElementById('title-screen');
@@ -783,6 +786,12 @@
 
     updateFighterHUD('p1', p1);
     updateFighterHUD('p2', p2);
+
+    const keyMap = { KeyA: 'hud-key-A', KeyS: 'hud-key-S', KeyZ: 'hud-key-Z', KeyX: 'hud-key-X' };
+    Object.entries(keyMap).forEach(([code, elId]) => {
+      const el = document.getElementById(elId);
+      if (el) el.classList.toggle('active', keysHeld.has(code));
+    });
   }
 
   function updateFighterHUD(prefix, f) {
@@ -826,54 +835,45 @@
     }
   }
 
-  // Gritty Graphic-Novel Arena Stage
+  // Stage Background (uses assets/background1.jpg with atmospheric contrast overlay)
   function drawStage() {
-    const sky = ctx.createLinearGradient(0, 0, 0, STAGE.groundY);
-    sky.addColorStop(0, '#07080d');
-    sky.addColorStop(0.55, '#151824');
-    sky.addColorStop(1, '#261822');
-    ctx.fillStyle = sky;
-    ctx.fillRect(0, 0, STAGE.width, STAGE.groundY);
+    if (stageBgImg.complete && stageBgImg.naturalWidth > 0) {
+      const iw = stageBgImg.naturalWidth;
+      const ih = stageBgImg.naturalHeight;
+      const scale = Math.max(STAGE.width / iw, STAGE.height / ih);
+      const dw = iw * scale;
+      const dh = ih * scale;
+      const dx = (STAGE.width - dw) / 2;
+      const dy = (STAGE.height - dh) / 2;
+      ctx.drawImage(stageBgImg, dx, dy, dw, dh);
 
-    // Overcast Moon / Atmospheric Haze
-    const haze = ctx.createRadialGradient(480, 145, 20, 480, 145, 160);
-    haze.addColorStop(0, 'rgba(214, 198, 170, 0.18)');
-    haze.addColorStop(1, 'rgba(214, 198, 170, 0)');
-    ctx.fillStyle = haze;
-    ctx.beginPath();
-    ctx.arc(480, 145, 160, 0, Math.PI * 2);
-    ctx.fill();
+      // Subtle dark contrast overlay so fighters & HUD stay crisp
+      ctx.fillStyle = 'rgba(7, 8, 14, 0.38)';
+      ctx.fillRect(0, 0, STAGE.width, STAGE.groundY);
 
-    // Parallax Industrial / Temple Skyline
-    const camOffset = p1 && p2 ? ((p1.x + p2.x) / 2 - 480) * 0.08 : 0;
-    ctx.fillStyle = '#0d0f17';
-    const buildings = [
-      [15, 185, 95], [120, 145, 78], [215, 210, 110], [345, 170, 82],
-      [530, 160, 96], [645, 195, 88], [750, 140, 92], [855, 180, 105]
-    ];
-    buildings.forEach(([bx, by, bw]) => {
-      ctx.fillRect(bx - camOffset, by, bw, STAGE.groundY - by);
-    });
+      // Grounded floor shadow band below STAGE.groundY
+      const floorGrad = ctx.createLinearGradient(0, STAGE.groundY, 0, STAGE.height);
+      floorGrad.addColorStop(0, 'rgba(14, 16, 24, 0.68)');
+      floorGrad.addColorStop(1, 'rgba(7, 8, 12, 0.92)');
+      ctx.fillStyle = floorGrad;
+      ctx.fillRect(0, STAGE.groundY, STAGE.width, STAGE.height - STAGE.groundY);
+    } else {
+      const sky = ctx.createLinearGradient(0, 0, 0, STAGE.groundY);
+      sky.addColorStop(0, '#07080d');
+      sky.addColorStop(0.55, '#151824');
+      sky.addColorStop(1, '#261822');
+      ctx.fillStyle = sky;
+      ctx.fillRect(0, 0, STAGE.width, STAGE.groundY);
 
-    // Weathered Stone Arena Floor
-    const floorGrad = ctx.createLinearGradient(0, STAGE.groundY, 0, STAGE.height);
-    floorGrad.addColorStop(0, '#222633');
-    floorGrad.addColorStop(1, '#0b0d12');
-    ctx.fillStyle = floorGrad;
-    ctx.fillRect(0, STAGE.groundY, STAGE.width, STAGE.height - STAGE.groundY);
-
-    // Perspective Stone Slab Lines
-    ctx.strokeStyle = 'rgba(130, 142, 168, 0.16)';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    for (let i = -5; i <= 5; i++) {
-      ctx.moveTo(480 + i * 78 - camOffset * 1.5, STAGE.groundY);
-      ctx.lineTo(480 + i * 135 - camOffset * 1.5, STAGE.height);
+      const floorGrad = ctx.createLinearGradient(0, STAGE.groundY, 0, STAGE.height);
+      floorGrad.addColorStop(0, '#222633');
+      floorGrad.addColorStop(1, '#0b0d12');
+      ctx.fillStyle = floorGrad;
+      ctx.fillRect(0, STAGE.groundY, STAGE.width, STAGE.height - STAGE.groundY);
     }
-    ctx.stroke();
 
     // Arena Boundary Trim
-    ctx.strokeStyle = '#751822';
+    ctx.strokeStyle = '#9e1c28';
     ctx.lineWidth = 3;
     ctx.beginPath();
     ctx.moveTo(0, STAGE.groundY);
