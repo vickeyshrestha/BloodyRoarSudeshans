@@ -312,7 +312,19 @@
   btnConfirmFighter.addEventListener('click', startMatchFromSelect);
   btnSelectMenu.addEventListener('click', goToMenu);
   btnAcceptChallenge.addEventListener('click', acceptBossChallenge);
-  btnBossMenu.addEventListener('click', goToMenu);
+  btnBossMenu.addEventListener('click', () => {
+    SoundFX.playTransform(p2.data.id);
+    btnBossMenu.disabled = true;
+    btnBossMenu.textContent = 'NO ESCAPE!';
+    const quoteEl = document.getElementById('boss-challenge-quote');
+    if (quoteEl) {
+      quoteEl.textContent = '"TOO LATE!! You signed the 2060 BS canteen pact—you face the Boss anyway!"';
+      quoteEl.style.color = '#ffd700';
+    }
+    setTimeout(() => {
+      acceptBossChallenge();
+    }, 1400);
+  });
   btnPause.addEventListener('click', togglePause);
   btnPauseResume.addEventListener('click', togglePause);
   btnPauseRestart.addEventListener('click', () => {
@@ -886,13 +898,16 @@
 
   function showBossChallenge() {
     gameMode = 'BOSS_INTRO';
+    btnBossMenu.disabled = false;
+    btnBossMenu.textContent = 'RUN AWAY';
+    const quoteEl = document.getElementById('boss-challenge-quote');
+    quoteEl.style.color = '';
     const bossQuotes = [
       '"I coded this game, so I definitely rigged my own hitboxes!"',
       '"Still undefeated since 2004 canteen lunch. Prepare to get clawed!"',
       '"You beat the others... now face the Creator, Director & Stunt Double!"'
     ];
-    document.getElementById('boss-challenge-quote').textContent =
-      bossQuotes[Math.floor(Math.random() * bossQuotes.length)];
+    quoteEl.textContent = bossQuotes[Math.floor(Math.random() * bossQuotes.length)];
     const bossCanvas = document.getElementById('boss-challenge-canvas');
     drawPortrait(bossCanvas, p2.data, true);
     const bossEntry = SPRITE_CACHE[`${p2.data.id}_beast`];
