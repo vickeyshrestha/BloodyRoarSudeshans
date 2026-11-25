@@ -1144,31 +1144,33 @@
   function getAttackSpec(fighter, type) {
     const pwr = fighter.data.stats.power;
     const rng = fighter.data.stats.range;
+    const isSumit = fighter.data.id === 'sumit';
+    const isAdheesh = fighter.data.id === 'adheesh';
     // Human form deals 30% damage; Beast form unleashes full 1.45x power
     const formMult = fighter.isBeast ? 1.45 : 0.3;
 
     if (type === 'punch') {
       return {
-        startup: 6,
+        startup: isSumit ? 4 : isAdheesh ? 8 : 6,
         active: 6,
-        recovery: 10,
+        recovery: isSumit ? 8 : isAdheesh ? 12 : 10,
         damage: Math.max(1, Math.round((5 + pwr * 0.55) * formMult)),
-        range: 64 + rng * 4.5,
-        height: 54,
-        knockback: 4.5,
-        hitstun: 16,
-        heavy: false
+        range: 64 + rng * 4.5 + (isAdheesh && fighter.isBeast ? 16 : 0),
+        height: isSumit && fighter.isBeast ? 44 : 54,
+        knockback: isAdheesh ? 6.0 : 4.5,
+        hitstun: isAdheesh ? 19 : 16,
+        heavy: isAdheesh && fighter.isBeast
       };
     }
     return {
-      startup: 10,
+      startup: isSumit ? 8 : isAdheesh ? 13 : 10,
       active: 8,
-      recovery: 14,
+      recovery: isSumit ? 11 : isAdheesh ? 16 : 14,
       damage: Math.max(2, Math.round((9 + pwr * 0.95) * formMult)),
-      range: 82 + rng * 5.2,
-      height: 64,
-      knockback: fighter.data.id === 'munna' ? 10.5 : 8.0,
-      hitstun: 24,
+      range: 82 + rng * 5.2 + (isAdheesh && fighter.isBeast ? 20 : 0),
+      height: isSumit && fighter.isBeast ? 48 : 64,
+      knockback: fighter.data.id === 'munna' ? 10.5 : isAdheesh ? 11.0 : 8.0,
+      hitstun: isAdheesh ? 28 : 24,
       heavy: true
     };
   }
@@ -1496,7 +1498,10 @@
     const w = spec.range;
     const h = spec.height;
     const x = f.facing === 1 ? f.x + 20 * s : f.x - 20 * s - w;
-    const y = f.state === 'kick' ? f.y - 142 * s : f.y - 166 * s;
+    let y = f.state === 'kick' ? f.y - 142 * s : f.y - 166 * s;
+    if (f.data.id === 'sumit' && f.isBeast) {
+      y = f.y - 115 * s; // Low-reaching Mouse claw hitbox
+    }
     return { x, y, w, h };
   }
 
@@ -1568,8 +1573,8 @@
       });
       spawnFloatingText(defender.x, defender.y - 148, `-${spec.damage}`, spec.heavy ? '#e04f5f' : '#e6e8ee');
 
-      // 4-6 frames hitstop on hit
-      hitstopFrames = spec.heavy ? 6 : 4;
+      // 4-6 frames hitstop on hit (heavier on Adheesh Elephant strikes)
+      hitstopFrames = attacker.data.id === 'adheesh' && attacker.isBeast ? 9 : spec.heavy ? 6 : 4;
       if (spec.heavy) {
         shakeFrames = 8;
         shakeIntensity = 5;
