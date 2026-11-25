@@ -19,12 +19,29 @@
     img.src = src;
     return img;
   });
+  let stageBgDeck = [];
+  let lastStageBgIdx = -1;
   let currentStageBg = STAGE_BG_IMAGES[0];
 
   function pickRandomStageBackground() {
-    const ready = STAGE_BG_IMAGES.filter((im) => im.complete && im.naturalWidth > 0);
-    const pool = ready.length > 0 ? ready : STAGE_BG_IMAGES;
-    currentStageBg = pool[Math.floor(Math.random() * pool.length)];
+    if (stageBgDeck.length === 0) {
+      stageBgDeck = STAGE_BG_IMAGES.map((_, idx) => idx);
+      for (let i = stageBgDeck.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [stageBgDeck[i], stageBgDeck[j]] = [stageBgDeck[j], stageBgDeck[i]];
+      }
+      // Never repeat the immediately previous background on reshuffle
+      if (stageBgDeck.length > 1 && stageBgDeck[stageBgDeck.length - 1] === lastStageBgIdx) {
+        const swapIdx = 0;
+        [stageBgDeck[stageBgDeck.length - 1], stageBgDeck[swapIdx]] = [
+          stageBgDeck[swapIdx],
+          stageBgDeck[stageBgDeck.length - 1]
+        ];
+      }
+    }
+    const nextIdx = stageBgDeck.pop();
+    lastStageBgIdx = nextIdx;
+    currentStageBg = STAGE_BG_IMAGES[nextIdx];
   }
 
   // DOM References
@@ -1899,13 +1916,6 @@
       // Subtle dark contrast overlay so fighters & HUD stay crisp
       ctx.fillStyle = 'rgba(7, 8, 14, 0.34)';
       ctx.fillRect(0, 0, STAGE.width, STAGE.groundY);
-
-      // Grounded floor shadow band below STAGE.groundY
-      const floorGrad = ctx.createLinearGradient(0, STAGE.groundY, 0, STAGE.height);
-      floorGrad.addColorStop(0, 'rgba(14, 16, 24, 0.68)');
-      floorGrad.addColorStop(1, 'rgba(7, 8, 12, 0.92)');
-      ctx.fillStyle = floorGrad;
-      ctx.fillRect(0, STAGE.groundY, STAGE.width, STAGE.height - STAGE.groundY);
     } else {
       const sky = ctx.createLinearGradient(0, 0, 0, STAGE.groundY);
       sky.addColorStop(0, '#07080d');
@@ -1913,16 +1923,38 @@
       sky.addColorStop(1, '#261822');
       ctx.fillStyle = sky;
       ctx.fillRect(0, 0, STAGE.width, STAGE.groundY);
-
-      const floorGrad = ctx.createLinearGradient(0, STAGE.groundY, 0, STAGE.height);
-      floorGrad.addColorStop(0, '#222633');
-      floorGrad.addColorStop(1, '#0b0d12');
-      ctx.fillStyle = floorGrad;
-      ctx.fillRect(0, STAGE.groundY, STAGE.width, STAGE.height - STAGE.groundY);
     }
 
-    // Arena Boundary Trim
-    ctx.strokeStyle = '#9e1c28';
+    // Polished Wooden Dojo Floor (flat perspective planks)
+    const floorH = STAGE.height - STAGE.groundY;
+    const woodGrad = ctx.createLinearGradient(0, STAGE.groundY, 0, STAGE.height);
+    woodGrad.addColorStop(0, '#5a3821');
+    woodGrad.addColorStop(0.45, '#422716');
+    woodGrad.addColorStop(1, '#24140b');
+    ctx.fillStyle = woodGrad;
+    ctx.fillRect(0, STAGE.groundY, STAGE.width, floorH);
+
+    // Subtle horizontal plank bands
+    ctx.fillStyle = 'rgba(255, 210, 160, 0.04)';
+    ctx.fillRect(0, STAGE.groundY + 14, STAGE.width, 16);
+    ctx.fillRect(0, STAGE.groundY + 48, STAGE.width, 20);
+
+    // Perspective plank seams
+    ctx.strokeStyle = 'rgba(18, 9, 4, 0.55)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    for (let y = STAGE.groundY + 14; y < STAGE.height; y += 22) {
+      ctx.moveTo(0, y);
+      ctx.lineTo(STAGE.width, y);
+    }
+    for (let i = -6; i <= 6; i++) {
+      ctx.moveTo(480 + i * 76, STAGE.groundY);
+      ctx.lineTo(480 + i * 132, STAGE.height);
+    }
+    ctx.stroke();
+
+    // Crisp wooden floor trim
+    ctx.strokeStyle = '#9c6b3b';
     ctx.lineWidth = 3;
     ctx.beginPath();
     ctx.moveTo(0, STAGE.groundY);

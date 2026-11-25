@@ -27,6 +27,7 @@ const FIGHTERS = [
     id: 'nirbhaya',
     name: 'Nirbhaya Risal',
     beastName: 'Ant',
+    portraitSrc: 'assets/Nirbhaya.jpg',
     desc: 'Armored chitinous brawler with serrated mandibles & rapid strikes.',
     stats: { speed: 9, power: 6, range: 5, health: 98, jumpForce: -13.6, scale: 0.97 },
     palette: {
@@ -48,6 +49,7 @@ const FIGHTERS = [
     id: 'dinesh',
     name: 'Dinesh Sapkota',
     beastName: 'Ganesha',
+    portraitSrc: 'assets/Dinesh.jpg',
     desc: 'Sculpted elephant-headed warrior with tarnished gold armor & heavy palm strikes.',
     stats: { speed: 6, power: 8, range: 7, health: 115, jumpForce: -13.0, scale: 1.06 },
     palette: {
@@ -391,14 +393,19 @@ function drawSpriteFighter(ctx, f, img, globalTime) {
   const drawH = targetH;
   const drawW = targetH * aspect;
 
-  // Ground cast shadow
+  // Ground cast shadow (stays anchored on the wooden floor at y=448 even during jumps)
+  const heightAboveFloor = Math.max(0, 448 - f.y);
+  const shadowScale = Math.max(0.45, 1 - heightAboveFloor / 260);
   ctx.save();
   ctx.translate(f.x, f.y);
-  ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
+  ctx.save();
+  ctx.translate(0, heightAboveFloor);
+  ctx.fillStyle = `rgba(0, 0, 0, ${(0.58 * shadowScale).toFixed(2)})`;
   ctx.beginPath();
-  const shadowW = f.state === 'ko' ? 78 : 48 * sizeMult;
-  ctx.ellipse(0, 2, shadowW, 9, 0, 0, Math.PI * 2);
+  const shadowW = (f.state === 'ko' ? 78 : 50 * sizeMult) * shadowScale;
+  ctx.ellipse(0, 3, shadowW, 10 * shadowScale, 0, 0, Math.PI * 2);
   ctx.fill();
+  ctx.restore();
 
   // Ganesha subtle warm spiritual aura in Beast form
   if (isBeast && data.id === 'dinesh') {
