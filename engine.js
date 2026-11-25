@@ -879,9 +879,9 @@
 
     if (type === 'punch') {
       return {
-        startup: 6,
+        startup: fighter.isBeast ? 5 : 6,
         active: 6,
-        recovery: 10,
+        recovery: fighter.isBeast ? 8 : 10,
         damage: Math.round((5 + pwr * 0.55) * beastMult),
         range: 64 + rng * 4.5,
         height: 54,
@@ -891,9 +891,9 @@
       };
     }
     return {
-      startup: 10,
+      startup: fighter.isBeast ? 8 : 10,
       active: 8,
-      recovery: 14,
+      recovery: fighter.isBeast ? 11 : 14,
       damage: Math.round((9 + pwr * 0.95) * beastMult),
       range: 82 + rng * 5.2,
       height: 64,
@@ -993,8 +993,8 @@
     f.facing = opponent.x >= f.x ? 1 : -1;
 
     const grounded = f.y >= STAGE.groundY;
-    // Noticeable speed boost in Beast Mode (+32%)
-    const moveSpeed = (1.8 + f.data.stats.speed * 0.24) * (f.isBeast ? 1.32 : 1.0);
+    // Human form is more deliberate; Beast Mode gets a clear +48% speed surge
+    const moveSpeed = (1.45 + f.data.stats.speed * 0.2) * (f.isBeast ? 1.48 : 1.0);
 
     let left = false;
     let right = false;
