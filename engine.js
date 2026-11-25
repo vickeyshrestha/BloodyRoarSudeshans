@@ -63,6 +63,7 @@
   let particles = [];
   let floatingTexts = [];
   let shockwaves = [];
+  let starbursts = [];
 
   // Input Tracking (Strict Mapping)
   const keysHeld = new Set();
@@ -286,6 +287,7 @@
       comboDisplayTimer: 0,
       hitstunFrames: 0,
       hitFlash: 0,
+      blockRecoil: 0,
       animOffset: isCPU ? 20 : 0,
       aiCooldown: 28,
       aiAction: 'pause',
@@ -336,6 +338,7 @@
     particles = [];
     floatingTexts = [];
     shockwaves = [];
+    starbursts = [];
     roundTimer = 99;
     timerTicks = 0;
     gameMode = 'FIGHT';
@@ -684,9 +687,18 @@
       const chipDmg = Math.max(1, Math.round(spec.damage * 0.25));
       defender.health = Math.max(0, defender.health - chipDmg);
       defender.beastGauge = Math.min(100, defender.beastGauge + 9);
+      defender.blockRecoil = 8;
       attacker.beastGauge = Math.min(100, attacker.beastGauge + 4);
       SoundFX.playBlock();
-      spawnHitSparks(impactX, impactY, '#5ea8c9', 8);
+      spawnHitSparks(impactX, impactY, '#5ea8c9', 10);
+      shockwaves.push({
+        x: impactX,
+        y: impactY,
+        r: 12,
+        maxR: 64,
+        color: '#bfefff',
+        alpha: 0.95
+      });
       spawnFloatingText(defender.x, defender.y - 120, 'BLOCK!', '#5ea8c9');
       hitstopFrames = 3;
     } else {
@@ -704,14 +716,23 @@
 
       SoundFX.playHit(spec.heavy);
       SoundFX.playHitVoice(defender.data.id, defender.isBeast);
-      spawnHitSparks(impactX, impactY, spec.heavy ? '#b81d2c' : '#c99a3b', spec.heavy ? 16 : 9);
+      spawnHitSparks(impactX, impactY, spec.heavy ? '#ff4d6d' : '#ffd369', spec.heavy ? 18 : 11);
+      starbursts.push({
+        x: impactX,
+        y: impactY,
+        radius: spec.heavy ? 52 : 34,
+        color: spec.heavy ? '#ff3b5c' : '#ffe169',
+        life: spec.heavy ? 10 : 7,
+        maxLife: spec.heavy ? 10 : 7,
+        angle: Math.random() * Math.PI
+      });
       spawnFloatingText(defender.x, defender.y - 118, `-${spec.damage}`, spec.heavy ? '#e04f5f' : '#e6e8ee');
 
       // Weightier hitstop on heavy strikes
       hitstopFrames = spec.heavy ? 8 : 3;
       if (spec.heavy) {
         shakeFrames = 8;
-        shakeIntensity = 4.5;
+        shakeIntensity = 5;
       }
     }
 
@@ -821,6 +842,7 @@
     }
 
     if (f.hitFlash > 0) f.hitFlash--;
+    if (f.blockRecoil > 0) f.blockRecoil--;
     if (f.comboDisplayTimer > 0) {
       f.comboDisplayTimer--;
       if (f.comboDisplayTimer <= 0) f.comboCount = 0;
@@ -987,9 +1009,9 @@
   function renderEffects() {
     for (let i = shockwaves.length - 1; i >= 0; i--) {
       const s = shockwaves[i];
-      s.r += 8;
-      s.alpha -= 0.055;
-      if (s.alpha <= 0) {
+      s.r += 7;
+      s.alpha -= 0.065;
+      if (s.alpha <= 0 || (s.maxR && s.r > s.maxR)) {
         shockwaves.splice(i, 1);
         continue;
       }
@@ -999,6 +1021,38 @@
       ctx.lineWidth = 4;
       ctx.beginPath();
       ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // Explosive Hit Starbursts
+    for (let i = starbursts.length - 1; i >= 0; i--) {
+      const sb = starbursts[i];
+      sb.life--;
+      if (sb.life <= 0) {
+        starbursts.splice(i, 1);
+        continue;
+      }
+      const ratio = sb.life / sb.maxLife;
+      const spikes = 10;
+      const outerR = sb.radius * (1.25 - ratio * 0.25);
+      const innerR = outerR * 0.32;
+      ctx.save();
+      ctx.translate(sb.x, sb.y);
+      ctx.rotate(sb.angle);
+      ctx.globalAlpha = ratio;
+      ctx.fillStyle = '#ffffff';
+      ctx.strokeStyle = sb.color;
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      for (let k = 0; k < spikes * 2; k++) {
+        const r = k % 2 === 0 ? outerR : innerR;
+        const a = (k * Math.PI) / spikes;
+        if (k === 0) ctx.moveTo(Math.cos(a) * r, Math.sin(a) * r);
+        else ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r);
+      }
+      ctx.closePath();
+      ctx.fill();
       ctx.stroke();
       ctx.restore();
     }

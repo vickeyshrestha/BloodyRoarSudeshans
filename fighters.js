@@ -395,56 +395,111 @@ function drawSpriteFighter(ctx, f, img, globalTime) {
   // Flip horizontally when facing left (-1)
   ctx.scale(f.facing, 1);
 
-  // Procedural transform animations
+  // Smooth mathematical squash, stretch, rotation, and translation transforms
   let offsetX = 0;
   let offsetY = 0;
   let rot = 0;
   let sx = 1;
   let sy = 1;
+  let spriteAlpha = 1;
+
+  const deg = Math.PI / 180;
+  const punchStartup = data.id === 'nirbhaya' ? 6 : 8;
+  const punchActive = 6;
+  const punchRecovery = 11;
+
+  const kickStartup = 13;
+  const kickActive = 7;
+  const kickRecovery = 17;
 
   switch (f.state) {
     case 'idle':
-      sy = 1 + Math.sin(t) * 0.026;
+      sy = 1 + Math.sin(t) * 0.028;
       sx = 1 - Math.sin(t) * 0.015;
       break;
     case 'walk':
       offsetY = -Math.abs(Math.sin(t * 2.2)) * 5;
-      rot = 0.07;
+      rot = 4 * deg;
       break;
     case 'crouch':
-      sy = 0.72;
+      sy = 0.74;
       sx = 1.1;
-      rot = 0.08;
+      offsetY = 4;
       break;
     case 'jump':
-      sy = 1.05;
-      sx = 0.96;
-      rot = 0.05;
+      sy = 1.06;
+      sx = 0.95;
+      rot = 3 * deg;
       break;
     case 'punch': {
-      const pProg = Math.min(1, f.stateFrame / 8);
-      offsetX = Math.sin(pProg * Math.PI) * 16;
-      rot = 0.16;
-      sx = 1.05;
-      sy = 0.97;
+      const fr = f.stateFrame;
+      if (fr < punchStartup) {
+        // Pre-attack anticipation: subtle backward lean (-6.5 deg) and -10px wind-up
+        const p = fr / punchStartup;
+        offsetX = -10 * p;
+        rot = -6.5 * deg * p;
+        sx = 1 - 0.04 * p;
+        sy = 1 + 0.03 * p;
+      } else if (fr < punchStartup + punchActive) {
+        // Active frame: fast forward lunge (+46px), forward lean (+10 deg), +10% scaleX, -5% scaleY
+        const p = Math.min(1, (fr - punchStartup) / 2);
+        offsetX = -10 + 56 * p;
+        rot = (-6.5 + 16.5 * p) * deg;
+        sx = 1.1;
+        sy = 0.95;
+      } else {
+        // Recovery: smooth ease back to idle
+        const p = Math.min(1, (fr - punchStartup - punchActive) / punchRecovery);
+        const ease = 1 - Math.pow(1 - p, 2);
+        offsetX = 46 * (1 - ease);
+        rot = 10 * deg * (1 - ease);
+        sx = 1.1 - 0.1 * ease;
+        sy = 0.95 + 0.05 * ease;
+      }
       break;
     }
     case 'kick': {
-      const kProg = Math.min(1, f.stateFrame / 14);
-      offsetX = Math.sin(kProg * Math.PI) * 20;
-      rot = -0.14;
-      sx = 1.07;
-      sy = 0.96;
+      const fr = f.stateFrame;
+      if (fr < kickStartup) {
+        // Pre-attack: deep crouch (-15% scaleY, +5px down) and subtle backward tilt
+        const p = fr / kickStartup;
+        sy = 1 - 0.15 * p;
+        sx = 1 + 0.06 * p;
+        offsetY = 5 * p;
+        rot = -6 * deg * p;
+      } else if (fr < kickStartup + kickActive) {
+        // Active frame: rapid forward-upward thrust (+40px forward, -15px up, -15 deg back-tilt)
+        const p = Math.min(1, (fr - kickStartup) / 2);
+        offsetX = 40 * p;
+        offsetY = 5 - 20 * p;
+        rot = (-6 - 9 * p) * deg;
+        sx = 1.08;
+        sy = 0.96;
+      } else {
+        // Recovery: heavy step-down back to idle posture
+        const p = Math.min(1, (fr - kickStartup - kickActive) / kickRecovery);
+        const ease = 1 - Math.pow(1 - p, 2);
+        offsetX = 40 * (1 - ease);
+        offsetY = -15 * (1 - ease);
+        rot = -15 * deg * (1 - ease);
+        sx = 1.08 - 0.08 * ease;
+        sy = 0.96 + 0.04 * ease;
+      }
       break;
     }
-    case 'block':
-      rot = -0.09;
+    case 'block': {
+      const recoil = f.blockRecoil ? f.blockRecoil * 1.2 : 0;
+      offsetX = -recoil;
+      rot = -5.5 * deg;
       sx = 0.96;
       sy = 0.96;
       break;
+    }
     case 'hitstun':
-      rot = -0.2;
-      offsetX = -6;
+      offsetX = Math.sin(globalTime * 2.2) * 5 - 5;
+      rot = -11 * deg;
+      sx = 0.97;
+      sy = 0.97;
       break;
     case 'transform':
       sy = 1.08 + Math.sin(t * 4) * 0.04;
@@ -454,6 +509,7 @@ function drawSpriteFighter(ctx, f, img, globalTime) {
       rot = -Math.PI / 2;
       offsetY = -14;
       offsetX = -56;
+      spriteAlpha = 0.82;
       break;
     case 'victory':
       sy = 1 + Math.sin(t * 1.4) * 0.03;
@@ -461,16 +517,17 @@ function drawSpriteFighter(ctx, f, img, globalTime) {
   }
 
   ctx.save();
+  ctx.globalAlpha = spriteAlpha;
   ctx.translate(offsetX, offsetY);
   ctx.rotate(rot);
   ctx.scale(sx, sy);
 
-  // Draw base sprite anchored at feet (0, 0)
+  // Draw base PNG sprite anchored at feet (0, 0)
   ctx.drawImage(img, -drawW / 2, -drawH, drawW, drawH);
 
-  // Hitstun red/white flash or Beast Transform white flash
+  // Hitstun dark/red flash or Beast Transform white flash
   if (f.hitFlash > 0) {
-    const tinted = getTintedSprite(img, drawW, drawH, f.hitFlash % 2 === 0 ? '#ffffff' : '#ff2e4c', 0.65);
+    const tinted = getTintedSprite(img, drawW, drawH, f.hitFlash % 2 === 0 ? '#ff2e4c' : '#550912', 0.62);
     ctx.drawImage(tinted, -drawW / 2, -drawH, drawW, drawH);
   } else if (f.state === 'transform' && f.stateFrame < 12) {
     const tinted = getTintedSprite(img, drawW, drawH, '#ffffff', 0.72 * (1 - f.stateFrame / 12));
@@ -478,23 +535,53 @@ function drawSpriteFighter(ctx, f, img, globalTime) {
   }
   ctx.restore();
 
-  // Active Punch / Kick glowing slash arc
-  if (f.state === 'punch' && f.stateFrame >= 6 && f.stateFrame <= 15) {
+  // Procedural Swipe & Strike Arcs (defining Punch & Kick ranges cleanly)
+  if (f.state === 'punch' && f.stateFrame >= punchStartup && f.stateFrame <= punchStartup + punchActive + 5) {
+    const pLife = 1 - (f.stateFrame - punchStartup) / (punchActive + 6);
     ctx.save();
-    ctx.strokeStyle = pal.accent;
-    ctx.lineWidth = 4;
-    ctx.globalAlpha = 0.8;
+    ctx.globalAlpha = Math.max(0, pLife * 0.9);
+    const slashGrad = ctx.createLinearGradient(30, -96, 118, -76);
+    slashGrad.addColorStop(0, 'rgba(255, 255, 255, 0)');
+    slashGrad.addColorStop(0.6, 'rgba(255, 255, 255, 0.92)');
+    slashGrad.addColorStop(1, pal.accent);
+
+    ctx.fillStyle = slashGrad;
     ctx.beginPath();
-    ctx.arc(38, -78, 30, -0.75, 0.75);
+    ctx.moveTo(34, -104);
+    ctx.quadraticCurveTo(116, -92, 122, -78);
+    ctx.quadraticCurveTo(106, -68, 34, -76);
+    ctx.quadraticCurveTo(86, -86, 34, -104);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.arc(46, -86, 62, -0.45, 0.4);
     ctx.stroke();
     ctx.restore();
-  } else if (f.state === 'kick' && f.stateFrame >= 11 && f.stateFrame <= 22) {
+  } else if (f.state === 'kick' && f.stateFrame >= kickStartup && f.stateFrame <= kickStartup + kickActive + 7) {
+    const kLife = 1 - (f.stateFrame - kickStartup) / (kickActive + 8);
     ctx.save();
-    ctx.strokeStyle = pal.accent;
-    ctx.lineWidth = 5;
-    ctx.globalAlpha = 0.85;
+    ctx.globalAlpha = Math.max(0, kLife * 0.92);
+    const kickGrad = ctx.createLinearGradient(20, -125, 132, -40);
+    kickGrad.addColorStop(0, 'rgba(255, 255, 255, 0)');
+    kickGrad.addColorStop(0.55, pal.accent);
+    kickGrad.addColorStop(1, '#ffffff');
+
+    ctx.fillStyle = kickGrad;
     ctx.beginPath();
-    ctx.arc(34, -58, 46, -0.9, 0.45);
+    ctx.moveTo(22, -130);
+    ctx.quadraticCurveTo(138, -106, 134, -46);
+    ctx.quadraticCurveTo(92, -32, 26, -48);
+    ctx.quadraticCurveTo(102, -68, 22, -130);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 3.5;
+    ctx.beginPath();
+    ctx.arc(36, -78, 86, -0.85, 0.45);
     ctx.stroke();
     ctx.restore();
   }
@@ -502,15 +589,15 @@ function drawSpriteFighter(ctx, f, img, globalTime) {
   // Block translucent blue/white shield shimmer
   if (f.state === 'block') {
     ctx.save();
-    const shieldGrad = ctx.createRadialGradient(22, -68, 6, 22, -68, 44);
-    shieldGrad.addColorStop(0, 'rgba(220, 245, 255, 0.35)');
-    shieldGrad.addColorStop(0.7, 'rgba(94, 168, 201, 0.28)');
+    const shieldGrad = ctx.createRadialGradient(24, -72, 6, 24, -72, 46);
+    shieldGrad.addColorStop(0, 'rgba(220, 245, 255, 0.38)');
+    shieldGrad.addColorStop(0.7, 'rgba(94, 168, 201, 0.3)');
     shieldGrad.addColorStop(1, 'rgba(94, 168, 201, 0)');
     ctx.fillStyle = shieldGrad;
-    ctx.strokeStyle = 'rgba(180, 235, 255, 0.85)';
+    ctx.strokeStyle = 'rgba(180, 235, 255, 0.9)';
     ctx.lineWidth = 3;
     ctx.beginPath();
-    ctx.arc(20, -68, 42, -Math.PI * 0.44, Math.PI * 0.44);
+    ctx.arc(22, -72, 44, -Math.PI * 0.44, Math.PI * 0.44);
     ctx.stroke();
     ctx.fill();
     ctx.restore();
