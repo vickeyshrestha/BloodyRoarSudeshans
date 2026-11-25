@@ -366,7 +366,7 @@ function drawSpriteFighter(ctx, f, img, globalTime) {
   if (data.id === 'adheesh' && isBeast) sizeMult = 1.2;
   else if (data.id === 'sumit' && isBeast) sizeMult = 0.85;
 
-  const targetH = 126 * sizeMult;
+  const targetH = 378 * sizeMult;
   const aspect = (img.naturalWidth || 100) / (img.naturalHeight || 100);
   const drawH = targetH;
   const drawW = targetH * aspect;
@@ -376,19 +376,19 @@ function drawSpriteFighter(ctx, f, img, globalTime) {
   ctx.translate(f.x, f.y);
   ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
   ctx.beginPath();
-  const shadowW = f.state === 'ko' ? drawH * 0.48 : Math.max(30, drawW * 0.42);
-  ctx.ellipse(0, 2, shadowW, 8, 0, 0, Math.PI * 2);
+  const shadowW = f.state === 'ko' ? 72 : 44 * sizeMult;
+  ctx.ellipse(0, 2, shadowW, 9, 0, 0, Math.PI * 2);
   ctx.fill();
 
   // Ganesha subtle warm spiritual aura in Beast form
   if (isBeast && data.id === 'dinesh') {
-    const auraR = 66 + Math.sin(globalTime * 0.1) * 4;
-    const grad = ctx.createRadialGradient(0, -drawH * 0.55, 10, 0, -drawH * 0.55, auraR);
+    const auraR = 72 + Math.sin(globalTime * 0.1) * 4;
+    const grad = ctx.createRadialGradient(0, -76, 10, 0, -76, auraR);
     grad.addColorStop(0, 'rgba(201, 158, 56, 0.34)');
     grad.addColorStop(1, 'rgba(166, 94, 30, 0)');
     ctx.fillStyle = grad;
     ctx.beginPath();
-    ctx.arc(0, -drawH * 0.55, auraR, 0, Math.PI * 2);
+    ctx.arc(0, -76, auraR, 0, Math.PI * 2);
     ctx.fill();
   }
 
@@ -452,8 +452,8 @@ function drawSpriteFighter(ctx, f, img, globalTime) {
       break;
     case 'ko':
       rot = -Math.PI / 2;
-      offsetY = -12;
-      offsetX = -drawH * 0.35;
+      offsetY = -14;
+      offsetX = -56;
       break;
     case 'victory':
       sy = 1 + Math.sin(t * 1.4) * 0.03;
@@ -485,7 +485,7 @@ function drawSpriteFighter(ctx, f, img, globalTime) {
     ctx.lineWidth = 4;
     ctx.globalAlpha = 0.8;
     ctx.beginPath();
-    ctx.arc(drawW * 0.36, -drawH * 0.64, 28, -0.75, 0.75);
+    ctx.arc(38, -78, 30, -0.75, 0.75);
     ctx.stroke();
     ctx.restore();
   } else if (f.state === 'kick' && f.stateFrame >= 11 && f.stateFrame <= 22) {
@@ -494,7 +494,7 @@ function drawSpriteFighter(ctx, f, img, globalTime) {
     ctx.lineWidth = 5;
     ctx.globalAlpha = 0.85;
     ctx.beginPath();
-    ctx.arc(drawW * 0.32, -drawH * 0.48, 44, -0.9, 0.45);
+    ctx.arc(34, -58, 46, -0.9, 0.45);
     ctx.stroke();
     ctx.restore();
   }
@@ -502,7 +502,7 @@ function drawSpriteFighter(ctx, f, img, globalTime) {
   // Block translucent blue/white shield shimmer
   if (f.state === 'block') {
     ctx.save();
-    const shieldGrad = ctx.createRadialGradient(22, -drawH * 0.54, 6, 22, -drawH * 0.54, 42);
+    const shieldGrad = ctx.createRadialGradient(22, -68, 6, 22, -68, 44);
     shieldGrad.addColorStop(0, 'rgba(220, 245, 255, 0.35)');
     shieldGrad.addColorStop(0.7, 'rgba(94, 168, 201, 0.28)');
     shieldGrad.addColorStop(1, 'rgba(94, 168, 201, 0)');
@@ -510,7 +510,7 @@ function drawSpriteFighter(ctx, f, img, globalTime) {
     ctx.strokeStyle = 'rgba(180, 235, 255, 0.85)';
     ctx.lineWidth = 3;
     ctx.beginPath();
-    ctx.arc(20, -drawH * 0.54, 40, -Math.PI * 0.44, Math.PI * 0.44);
+    ctx.arc(20, -68, 42, -Math.PI * 0.44, Math.PI * 0.44);
     ctx.stroke();
     ctx.fill();
     ctx.restore();
