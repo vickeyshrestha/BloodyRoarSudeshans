@@ -127,7 +127,7 @@
             <span class="title-bloody">BLOODY ROAR</span>
             <span class="title-sub">SUDESHANS EDITION</span>
           </h1>
-          <p class="title-tagline">Unleash your inner beast. 3-Stage Arcade Ladder (Best of 3 rounds).</p>
+          <p class="title-tagline">Unleash your inner beast. 5-Stage Arcade &amp; Online Multiplayer.</p>
 
           <button id="btn-start" class="arcade-btn primary pulse-btn">START</button>
           <p class="pc-notice">Plays best on PC with a keyboard (mobile touch controls also supported).</p>
@@ -142,6 +142,75 @@
               <div><kbd>Z</kbd> Hold to Block (-75% dmg)</div>
               <div><kbd>X</kbd> Beast Transform (&ge;50% gauge)</div>
             </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Main Menu Overlay (3 Modes + High Scores) -->
+      <div id="menu-screen" class="screen-overlay hidden">
+        <div class="menu-card">
+          <div class="arcade-kicker">CLASS OF 2004 &bull; SELECT MODE</div>
+          <h2 class="menu-title">MAIN MENU</h2>
+          <div class="menu-name-row">
+            <label for="global-player-name">PLAYER NAME:</label>
+            <input id="global-player-name" type="text" maxlength="20" placeholder="Enter your name..." />
+          </div>
+          <div class="menu-buttons">
+            <button id="btn-mode-arcade" class="arcade-btn primary">1. ARCADE MODE (5 STAGES)</button>
+            <button id="btn-mode-online" class="arcade-btn secondary">2. MULTIPLAYER ONLINE</button>
+            <button id="btn-mode-credits" class="arcade-btn secondary">3. CREDITS</button>
+            <button id="btn-mode-scores" class="arcade-btn secondary">ONLINE HIGH SCORES</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Online Multiplayer Lobby (Supabase) -->
+      <div id="online-screen" class="screen-overlay hidden">
+        <div class="online-card">
+          <div class="arcade-kicker">SUPABASE REALTIME ARENA</div>
+          <h2 class="online-title">MULTIPLAYER ONLINE</h2>
+
+          <div class="online-grid">
+            <div class="online-col">
+              <div class="online-section-label">1. YOUR NAME &amp; FIGHTER</div>
+              <input id="online-player-name" type="text" maxlength="20" placeholder="Enter your name..." class="online-input" />
+              <select id="online-fighter-select" class="online-input"></select>
+
+              <div class="online-section-label" style="margin-top:10px;">2. HOST OR JOIN</div>
+              <button id="btn-online-host" class="arcade-btn primary" style="width:100%;">HOST GAME</button>
+
+              <div class="join-row">
+                <input id="online-room-code" type="text" maxlength="6" placeholder="ROOM CODE" class="online-input code-input" />
+                <button id="btn-online-join" class="arcade-btn secondary">JOIN</button>
+              </div>
+              <div id="online-status" class="online-status">Ready to host or join a match.</div>
+            </div>
+
+            <div class="online-col">
+              <div class="online-section-label">OPEN ROOMS <button id="btn-refresh-rooms" class="mini-btn">REFRESH</button></div>
+              <div id="online-rooms-list" class="online-rooms-list">
+                <div class="empty-msg">Loading open rooms...</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="online-footer">
+            <button id="btn-online-back" class="arcade-btn secondary">BACK TO MENU</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Online High Scores Leaderboard -->
+      <div id="leaderboard-screen" class="screen-overlay hidden">
+        <div class="leaderboard-card">
+          <div class="arcade-kicker">SUPABASE LEADERBOARD</div>
+          <h2 class="online-title">ONLINE HIGH SCORES</h2>
+          <div id="leaderboard-list" class="leaderboard-list">
+            <div class="empty-msg">Loading high scores...</div>
+          </div>
+          <div class="online-footer">
+            <button id="btn-scores-refresh" class="arcade-btn secondary">REFRESH</button>
+            <button id="btn-scores-back" class="arcade-btn primary">BACK TO MENU</button>
           </div>
         </div>
       </div>
@@ -272,7 +341,9 @@
     </div>
   </div>
 
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="audio.js"></script>
+  <script src="online.js"></script>
   <script src="fighters.js"></script>
   <script src="engine.js"></script>
 </body>

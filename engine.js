@@ -19,12 +19,23 @@
   // DOM References
   const hudEl = document.getElementById('hud');
   const titleScreen = document.getElementById('title-screen');
+  const menuScreen = document.getElementById('menu-screen');
+  const onlineScreen = document.getElementById('online-screen');
+  const leaderboardScreen = document.getElementById('leaderboard-screen');
   const storyScreen = document.getElementById('story-screen');
   const selectScreen = document.getElementById('select-screen');
   const vsScreen = document.getElementById('vs-screen');
   const bossChallengeScreen = document.getElementById('boss-challenge-screen');
   const victoryScreen = document.getElementById('victory-screen');
   const creditsCutscene = document.getElementById('credits-cutscene');
+
+  const globalPlayerNameInput = document.getElementById('global-player-name');
+  const onlinePlayerNameInput = document.getElementById('online-player-name');
+  const onlineFighterSelect = document.getElementById('online-fighter-select');
+  const onlineRoomCodeInput = document.getElementById('online-room-code');
+  const onlineStatusEl = document.getElementById('online-status');
+  const onlineRoomsList = document.getElementById('online-rooms-list');
+  const leaderboardList = document.getElementById('leaderboard-list');
 
   const rosterGrid = document.getElementById('roster-grid');
   const selName = document.getElementById('sel-name');
@@ -41,6 +52,16 @@
   const vsStageBadge = document.getElementById('vs-stage-badge');
 
   const btnStart = document.getElementById('btn-start');
+  const btnModeArcade = document.getElementById('btn-mode-arcade');
+  const btnModeOnline = document.getElementById('btn-mode-online');
+  const btnModeCredits = document.getElementById('btn-mode-credits');
+  const btnModeScores = document.getElementById('btn-mode-scores');
+  const btnOnlineHost = document.getElementById('btn-online-host');
+  const btnOnlineJoin = document.getElementById('btn-online-join');
+  const btnRefreshRooms = document.getElementById('btn-refresh-rooms');
+  const btnOnlineBack = document.getElementById('btn-online-back');
+  const btnScoresRefresh = document.getElementById('btn-scores-refresh');
+  const btnScoresBack = document.getElementById('btn-scores-back');
   const btnStoryContinue = document.getElementById('btn-story-continue');
   const btnConfirmFighter = document.getElementById('btn-confirm-fighter');
   const btnAcceptChallenge = document.getElementById('btn-accept-challenge');
@@ -61,6 +82,23 @@
   let roundNumber = 1;
   let arcadeStage = 1;
   let arcadeOpponents = [];
+  let arcadeScore = 0;
+  let playerName = localStorage.getItem('br_player_name') || 'Sudeshan';
+  let onlineRole = null; // null | 'host' | 'guest'
+  let onlineHostName = 'Host';
+  let onlineGuestName = 'Guest';
+  let onlineSyncTick = 0;
+  let standaloneCredits = false;
+  let remoteInput = {
+    left: false,
+    right: false,
+    up: false,
+    down: false,
+    block: false,
+    punch: false,
+    kick: false,
+    transform: false
+  };
   let roundTimer = 99;
   let timerTicks = 0;
   let bannerTimer = 0;
@@ -87,6 +125,10 @@
   }
 
   window.addEventListener('keydown', (e) => {
+    // Allow typing in name/room inputs without game key interception
+    if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT')) {
+      return;
+    }
     const code = normalizeCode(e);
     if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Space'].includes(code)) {
       e.preventDefault();
@@ -98,13 +140,13 @@
     keysHeld.add(code);
 
     if (gameMode === 'TITLE' && (code === 'Enter' || code === 'Space')) {
-      goToStory();
+      goToMenu();
     } else if (gameMode === 'STORY' && (code === 'Enter' || code === 'Space')) {
       goToSelect();
     } else if (gameMode === 'SELECT') {
       handleSelectKey(code);
     } else if (gameMode === 'VS' && (code === 'Enter' || code === 'Space')) {
-      vsTimer = 1;
+      if (!onlineRole) vsTimer = 1;
     } else if (gameMode === 'BOSS_INTRO' && (code === 'Enter' || code === 'Space')) {
       acceptBossChallenge();
     }
@@ -115,25 +157,53 @@
   });
 
   // Button Events
-  btnStart.addEventListener('click', goToStory);
+  btnStart.addEventListener('click', goToMenu);
+  btnModeArcade.addEventListener('click', () => {
+    syncPlayerNameFromInput(globalPlayerNameInput.value);
+    onlineRole = null;
+    OnlineManager.disconnectChannel();
+    goToStory();
+  });
+  btnModeOnline.addEventListener('click', () => {
+    syncPlayerNameFromInput(globalPlayerNameInput.value);
+    goToOnline();
+  });
+  btnModeCredits.addEventListener('click', openStandaloneCredits);
+  btnModeScores.addEventListener('click', openLeaderboard);
+  btnOnlineHost.addEventListener('click', handleHostRoom);
+  btnOnlineJoin.addEventListener('click', () => handleJoinRoom(onlineRoomCodeInput.value));
+  btnRefreshRooms.addEventListener('click', refreshOpenRooms);
+  btnOnlineBack.addEventListener('click', () => {
+    OnlineManager.disconnectChannel();
+    onlineRole = null;
+    goToMenu();
+  });
+  btnScoresRefresh.addEventListener('click', loadLeaderboard);
+  btnScoresBack.addEventListener('click', goToMenu);
+
   btnStoryContinue.addEventListener('click', goToSelect);
   btnConfirmFighter.addEventListener('click', startMatchFromSelect);
   btnAcceptChallenge.addEventListener('click', acceptBossChallenge);
   btnRematch.addEventListener('click', () => {
     SoundFX.playMenuConfirm();
-    startMatch(p1.data, p2.data);
+    if (onlineRole) goToOnline();
+    else startMatch(p1.data, p2.data);
   });
   btnChangeFighter.addEventListener('click', () => {
     SoundFX.playMenuSelect();
-    goToSelect();
+    if (onlineRole) goToOnline();
+    else goToSelect();
   });
   btnCreditsRematch.addEventListener('click', () => {
     SoundFX.playMenuConfirm();
-    startArcadeLadder(p1.data);
+    if (standaloneCredits) goToMenu();
+    else if (onlineRole) goToOnline();
+    else startArcadeLadder(p1.data);
   });
   btnCreditsChange.addEventListener('click', () => {
     SoundFX.playMenuSelect();
-    goToSelect();
+    if (standaloneCredits || onlineRole) goToMenu();
+    else goToSelect();
   });
   btnMute.addEventListener('click', () => {
     const muted = SoundFX.toggleMute();
@@ -264,8 +334,210 @@
   }
 
   function showOnlyScreen(screen) {
-    [titleScreen, storyScreen, selectScreen, vsScreen, bossChallengeScreen, victoryScreen, creditsCutscene].forEach((el) => el.classList.add('hidden'));
+    [
+      titleScreen,
+      menuScreen,
+      onlineScreen,
+      leaderboardScreen,
+      storyScreen,
+      selectScreen,
+      vsScreen,
+      bossChallengeScreen,
+      victoryScreen,
+      creditsCutscene
+    ].forEach((el) => el.classList.add('hidden'));
     if (screen) screen.classList.remove('hidden');
+  }
+
+  function syncPlayerNameFromInput(val) {
+    const clean = (val || '').trim();
+    if (clean) {
+      playerName = clean.slice(0, 20);
+      localStorage.setItem('br_player_name', playerName);
+    }
+    if (globalPlayerNameInput) globalPlayerNameInput.value = playerName;
+    if (onlinePlayerNameInput) onlinePlayerNameInput.value = playerName;
+  }
+
+  function goToMenu() {
+    SoundFX.startBGM();
+    SoundFX.playMenuConfirm();
+    standaloneCredits = false;
+    onlineRole = null;
+    OnlineManager.disconnectChannel();
+    gameMode = 'MENU';
+    syncPlayerNameFromInput(playerName);
+    hudEl.classList.add('hidden');
+    showOnlyScreen(menuScreen);
+  }
+
+  function openStandaloneCredits() {
+    SoundFX.playMenuConfirm();
+    standaloneCredits = true;
+    gameMode = 'CREDITS';
+    document.getElementById('credits-winner-title').textContent = 'CREDITS';
+    btnCreditsRematch.textContent = 'MAIN MENU';
+    btnCreditsChange.textContent = 'BACK';
+    const roll = document.getElementById('credits-roll');
+    roll.style.animation = 'none';
+    void roll.offsetWidth;
+    roll.style.animation = '';
+    hudEl.classList.add('hidden');
+    showOnlyScreen(creditsCutscene);
+  }
+
+  async function openLeaderboard() {
+    SoundFX.playMenuConfirm();
+    gameMode = 'SCORES';
+    hudEl.classList.add('hidden');
+    showOnlyScreen(leaderboardScreen);
+    await loadLeaderboard();
+  }
+
+  async function loadLeaderboard() {
+    leaderboardList.innerHTML = '<div class="empty-msg">Loading high scores...</div>';
+    const rows = await OnlineManager.fetchHighScores(15);
+    if (!rows.length) {
+      leaderboardList.innerHTML = '<div class="empty-msg">No high scores yet. Play Arcade or Online to set one!</div>';
+      return;
+    }
+    leaderboardList.innerHTML = rows
+      .map(
+        (r, i) => `
+        <div class="score-row">
+          <span><strong>#${i + 1}</strong> ${escapeHtml(r.player_name)} (${escapeHtml(getFighterById(r.fighter_id).name)})</span>
+          <span><strong>${r.score} PTS</strong> &bull; ${r.mode.toUpperCase()}</span>
+        </div>`
+      )
+      .join('');
+  }
+
+  function escapeHtml(str) {
+    return String(str || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+  }
+
+  function populateOnlineFighters() {
+    if (!onlineFighterSelect || onlineFighterSelect.options.length > 0) return;
+    FIGHTERS.forEach((f) => {
+      const opt = document.createElement('option');
+      opt.value = f.id;
+      opt.textContent = `${f.name} (Beast: ${f.beastName})`;
+      onlineFighterSelect.appendChild(opt);
+    });
+  }
+
+  async function goToOnline() {
+    SoundFX.playMenuConfirm();
+    populateOnlineFighters();
+    syncPlayerNameFromInput(playerName);
+    onlineStatusEl.textContent = 'Ready to host or join a match.';
+    gameMode = 'ONLINE';
+    hudEl.classList.add('hidden');
+    showOnlyScreen(onlineScreen);
+    await refreshOpenRooms();
+  }
+
+  async function refreshOpenRooms() {
+    onlineRoomsList.innerHTML = '<div class="empty-msg">Loading open rooms...</div>';
+    const rooms = await OnlineManager.listWaitingRooms();
+    if (!rooms.length) {
+      onlineRoomsList.innerHTML = '<div class="empty-msg">No open rooms. Click HOST GAME to create one!</div>';
+      return;
+    }
+    onlineRoomsList.innerHTML = '';
+    rooms.forEach((r) => {
+      const row = document.createElement('div');
+      row.className = 'room-row';
+      row.innerHTML = `
+        <span><strong>${escapeHtml(r.code)}</strong> &bull; ${escapeHtml(r.host_name)} (${escapeHtml(getFighterById(r.host_fighter).name)})</span>
+        <button class="mini-btn">JOIN</button>
+      `;
+      row.querySelector('button').addEventListener('click', () => handleJoinRoom(r.code));
+      onlineRoomsList.appendChild(row);
+    });
+  }
+
+  async function handleHostRoom() {
+    syncPlayerNameFromInput(onlinePlayerNameInput.value);
+    const fighterId = onlineFighterSelect.value || FIGHTERS[0].id;
+    onlineStatusEl.textContent = 'Creating room in Supabase...';
+    try {
+      const code = await OnlineManager.hostRoom(playerName, fighterId);
+      onlineRole = 'host';
+      onlineHostName = playerName;
+      onlineStatusEl.textContent = `Room ${code} created! Share code & waiting for opponent...`;
+
+      OnlineManager.connectChannel(code, {
+        onGuestJoin: (payload) => {
+          onlineGuestName = payload.guestName || 'Guest';
+          const f1 = getFighterById(fighterId);
+          const f2 = getFighterById(payload.guestFighter || FIGHTERS[1].id);
+          startMatch(f1, f2);
+        },
+        onRemoteInput: (inp) => {
+          if (inp) {
+            remoteInput.left = !!inp.left;
+            remoteInput.right = !!inp.right;
+            remoteInput.up = !!inp.up;
+            remoteInput.down = !!inp.down;
+            remoteInput.block = !!inp.block;
+            if (inp.punch) remoteInput.punch = true;
+            if (inp.kick) remoteInput.kick = true;
+            if (inp.transform) remoteInput.transform = true;
+          }
+        },
+        onPeerLeave: () => {
+          if (gameMode === 'FIGHT' || gameMode === 'ROUND_INTRO') {
+            showBanner('OPPONENT LEFT', 'Returning to lobby...', 90);
+          }
+        }
+      });
+    } catch (err) {
+      onlineStatusEl.textContent = `Host error: ${err.message || err}`;
+    }
+  }
+
+  async function handleJoinRoom(rawCode) {
+    syncPlayerNameFromInput(onlinePlayerNameInput.value);
+    const code = (rawCode || '').trim().toUpperCase();
+    if (!code) {
+      onlineStatusEl.textContent = 'Enter a 6-character room code first.';
+      return;
+    }
+    const fighterId = onlineFighterSelect.value || FIGHTERS[1].id;
+    onlineStatusEl.textContent = `Joining room ${code}...`;
+    try {
+      const room = await OnlineManager.joinRoom(code, playerName, fighterId);
+      onlineRole = 'guest';
+      onlineHostName = room.host_name;
+      onlineGuestName = playerName;
+      const f1 = getFighterById(room.host_fighter);
+      const f2 = getFighterById(fighterId);
+
+      OnlineManager.connectChannel(code, {
+        onRemoteState: (st) => applyRemoteState(st),
+        onPeerLeave: () => {
+          if (gameMode === 'FIGHT' || gameMode === 'ROUND_INTRO') {
+            showBanner('HOST DISCONNECTED', 'Returning to lobby...', 90);
+          }
+        }
+      });
+
+      // Notify Host that Guest is connected
+      setTimeout(() => {
+        OnlineManager.sendBroadcast('guest_join', {
+          guestName: playerName,
+          guestFighter: fighterId
+        });
+      }, 350);
+
+      startMatch(f1, f2);
+    } catch (err) {
+      onlineStatusEl.textContent = `Join error: ${err.message || err}`;
+    }
   }
 
   function showBossChallenge() {
@@ -315,14 +587,16 @@
   }
 
   function startArcadeLadder(playerFighter) {
+    onlineRole = null;
+    arcadeScore = 0;
     const nonBossPool = FIGHTERS.filter((f) => f.id !== playerFighter.id && f.id !== 'vickey');
-    // Shuffle non-boss pool for Stage 1 and Stage 2
+    // Shuffle non-boss pool for Stages 1-4
     for (let i = nonBossPool.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [nonBossPool[i], nonBossPool[j]] = [nonBossPool[j], nonBossPool[i]];
     }
     const boss = getFighterById('vickey');
-    arcadeOpponents = [nonBossPool[0], nonBossPool[1], boss];
+    arcadeOpponents = [nonBossPool[0], nonBossPool[1], nonBossPool[2], nonBossPool[3], boss];
     arcadeStage = 1;
     startMatch(playerFighter, arcadeOpponents[0]);
   }
@@ -361,17 +635,26 @@
 
   function startMatch(f1Data, f2Data) {
     p1 = createFighterState(f1Data, 260, 1, false);
-    p2 = createFighterState(f2Data, 700, -1, true);
+    p2 = createFighterState(f2Data, 700, -1, !onlineRole);
     roundNumber = 1;
 
     if (vsStageBadge) {
-      vsStageBadge.textContent =
-        arcadeStage === 3 ? 'STAGE 3 OF 3 • FINAL BOSS' : `STAGE ${arcadeStage} OF 3`;
+      if (onlineRole) {
+        vsStageBadge.textContent = 'ONLINE VERSUS MATCH';
+      } else {
+        vsStageBadge.textContent =
+          arcadeStage === 5 ? 'FINAL STAGE • CLASS BOSS' : `STAGE ${arcadeStage} OF 5`;
+      }
     }
-    document.getElementById('vs-p1-name').textContent = f1Data.name.toUpperCase();
+    document.getElementById('vs-p1-name').textContent = onlineRole
+      ? `${onlineHostName.toUpperCase()} (${f1Data.name.toUpperCase()})`
+      : f1Data.name.toUpperCase();
     document.getElementById('vs-p1-beast').textContent = `BEAST: ${f1Data.beastName.toUpperCase()}`;
-    document.getElementById('vs-p2-name').textContent =
-      arcadeStage === 3 ? `BOSS: ${f2Data.name.toUpperCase()}` : f2Data.name.toUpperCase();
+    document.getElementById('vs-p2-name').textContent = onlineRole
+      ? `${onlineGuestName.toUpperCase()} (${f2Data.name.toUpperCase()})`
+      : arcadeStage === 5
+        ? `BOSS: ${f2Data.name.toUpperCase()}`
+        : f2Data.name.toUpperCase();
     document.getElementById('vs-p2-beast').textContent = `BEAST: ${f2Data.beastName.toUpperCase()}`;
     drawPortrait(document.getElementById('vs-p1-canvas'), f1Data, false);
     drawPortrait(document.getElementById('vs-p2-canvas'), f2Data, true);
@@ -422,7 +705,12 @@
 
     const roundTitle =
       roundNumber === 1 ? 'ROUND 1' : roundNumber === 2 ? 'ROUND 2' : 'FINAL ROUND';
-    showBanner(roundTitle, arcadeStage === 3 ? 'CLASS BOSS STAGE' : `STAGE ${arcadeStage} OF 3`, 240);
+    const subTitle = onlineRole
+      ? 'ONLINE MATCH'
+      : arcadeStage === 5
+        ? 'FINAL STAGE'
+        : `STAGE ${arcadeStage}`;
+    showBanner(roundTitle, subTitle, 240);
     SoundFX.playMenuSelect();
   }
 
@@ -592,7 +880,7 @@
     let block = false;
     let transform = false;
 
-    if (!f.isCPU) {
+    if (!f.isCPU && !(onlineRole === 'host' && f === p2)) {
       left = keysHeld.has('ArrowLeft');
       right = keysHeld.has('ArrowRight');
       up = keysHeld.has('ArrowUp');
@@ -601,6 +889,18 @@
       punch = keysJustPressed.has('KeyA');
       kick = keysJustPressed.has('KeyS');
       transform = keysJustPressed.has('KeyX');
+    } else if (onlineRole === 'host' && f === p2) {
+      left = remoteInput.left;
+      right = remoteInput.right;
+      up = remoteInput.up;
+      down = remoteInput.down;
+      block = remoteInput.block;
+      punch = remoteInput.punch;
+      kick = remoteInput.kick;
+      transform = remoteInput.transform;
+      remoteInput.punch = false;
+      remoteInput.kick = false;
+      remoteInput.transform = false;
     } else {
       const ai = computeCPUInput(f, opponent);
       left = ai.left;
@@ -916,30 +1216,69 @@
       fightBanner.classList.add('hidden');
       hudEl.classList.add('hidden');
 
-      if (p1Won) {
-        if (arcadeStage < 3) {
-          arcadeStage++;
-          startMatch(p1.data, arcadeOpponents[arcadeStage - 1]);
-          return;
+      if (!onlineRole) {
+        if (p1Won) {
+          arcadeScore += 500 + Math.round(p1.health * 5);
+          if (arcadeStage < 5) {
+            arcadeStage++;
+            startMatch(p1.data, arcadeOpponents[arcadeStage - 1]);
+            return;
+          }
+          OnlineManager.submitHighScore({
+            playerName,
+            fighterId: p1.data.id,
+            mode: 'arcade',
+            score: arcadeScore + 1000,
+            wins: 5
+          });
+          standaloneCredits = false;
+          btnCreditsRematch.textContent = 'REMATCH';
+          btnCreditsChange.textContent = 'CHANGE FIGHTER';
+          gameMode = 'VICTORY_CUTSCENE';
+          p1.x = 265;
+          p1.y = STAGE.groundY;
+          p1.facing = 1;
+          p1.state = 'victory';
+          document.getElementById('credits-winner-title').textContent =
+            `${p1.data.name.toUpperCase()} WINS!`;
+          const roll = document.getElementById('credits-roll');
+          roll.style.animation = 'none';
+          void roll.offsetWidth;
+          roll.style.animation = '';
+          showOnlyScreen(creditsCutscene);
+        } else {
+          if (arcadeScore > 0) {
+            OnlineManager.submitHighScore({
+              playerName,
+              fighterId: p1.data.id,
+              mode: 'arcade',
+              score: arcadeScore,
+              wins: arcadeStage - 1
+            });
+          }
+          gameMode = 'MATCH_END';
+          document.getElementById('victory-title').textContent = 'CPU WINS!';
+          document.getElementById('victory-subtitle').textContent =
+            `${p2.data.name} (Beast: ${p2.data.beastName}) claims victory on ${arcadeStage === 5 ? 'Final Stage' : `Stage ${arcadeStage}`}!`;
+          showOnlyScreen(victoryScreen);
         }
-        gameMode = 'VICTORY_CUTSCENE';
-        p1.x = 265;
-        p1.y = STAGE.groundY;
-        p1.facing = 1;
-        p1.state = 'victory';
-        document.getElementById('credits-winner-title').textContent =
-          `${p1.data.name.toUpperCase()} WINS!`;
-        // Restart CSS scroll animation cleanly
-        const roll = document.getElementById('credits-roll');
-        roll.style.animation = 'none';
-        void roll.offsetWidth;
-        roll.style.animation = '';
-        showOnlyScreen(creditsCutscene);
       } else {
+        // Online Match End: record score for local player
+        const localIsP1 = onlineRole === 'host';
+        const localFighter = localIsP1 ? p1 : p2;
+        const localWon = (localIsP1 && p1Won) || (!localIsP1 && !p1Won);
+        const matchScore = (localWon ? 1000 : 250) + Math.round(localFighter.health * 5);
+        OnlineManager.submitHighScore({
+          playerName,
+          fighterId: localFighter.data.id,
+          mode: 'online',
+          score: matchScore,
+          wins: localWon ? 1 : 0
+        });
         gameMode = 'MATCH_END';
-        document.getElementById('victory-title').textContent = 'CPU WINS!';
+        document.getElementById('victory-title').textContent = localWon ? 'YOU WIN ONLINE!' : 'OPPONENT WINS!';
         document.getElementById('victory-subtitle').textContent =
-          `${p2.data.name} (Beast: ${p2.data.beastName}) claims victory on Stage ${arcadeStage}!`;
+          `${p1Won ? onlineHostName : onlineGuestName} wins ${p1.roundsWon} - ${p2.roundsWon}! Score saved to Supabase.`;
         showOnlyScreen(victoryScreen);
       }
     } else {
@@ -1070,8 +1409,13 @@
 
     const stageBadge = document.getElementById('stage-badge');
     if (stageBadge) {
-      stageBadge.textContent = arcadeStage === 3 ? 'STAGE 3 • BOSS' : `STAGE ${arcadeStage} / 3`;
-      stageBadge.classList.toggle('boss', arcadeStage === 3);
+      if (onlineRole) {
+        stageBadge.textContent = 'ONLINE 1V1';
+        stageBadge.classList.remove('boss');
+      } else {
+        stageBadge.textContent = arcadeStage === 5 ? 'FINAL STAGE' : `STAGE ${arcadeStage}`;
+        stageBadge.classList.toggle('boss', arcadeStage === 5);
+      }
     }
 
     const timerBox = document.getElementById('timer-box');
@@ -1265,6 +1609,48 @@
     }
   }
 
+  function packFighterState(f) {
+    return {
+      x: Math.round(f.x),
+      y: Math.round(f.y),
+      vx: f.vx,
+      vy: f.vy,
+      facing: f.facing,
+      health: f.health,
+      trailHealth: f.trailHealth,
+      beastGauge: Math.round(f.beastGauge),
+      isBeast: f.isBeast,
+      roundsWon: f.roundsWon,
+      state: f.state,
+      stateFrame: f.stateFrame,
+      walkFrame: f.walkFrame,
+      comboCount: f.comboCount,
+      hitFlash: f.hitFlash,
+      blockRecoil: f.blockRecoil
+    };
+  }
+
+  function applyFighterSnapshot(f, snap) {
+    if (!f || !snap) return;
+    Object.assign(f, snap);
+  }
+
+  function applyRemoteState(st) {
+    if (!st || onlineRole !== 'guest') return;
+    if (st.gameMode && st.gameMode !== gameMode) {
+      gameMode = st.gameMode;
+      if (gameMode === 'ROUND_INTRO' || gameMode === 'FIGHT') {
+        showOnlyScreen(null);
+        hudEl.classList.remove('hidden');
+      }
+    }
+    roundNumber = st.roundNumber ?? roundNumber;
+    roundTimer = st.roundTimer ?? roundTimer;
+    applyFighterSnapshot(p1, st.p1);
+    applyFighterSnapshot(p2, st.p2);
+    updateHUD();
+  }
+
   // Main 60 FPS Loop
   function loop() {
     globalTime++;
@@ -1272,7 +1658,7 @@
     if (gameMode === 'VS') {
       vsTimer--;
       if (vsTimer <= 0) {
-        if (arcadeStage === 3) showBossChallenge();
+        if (!onlineRole && arcadeStage === 5) showBossChallenge();
         else startRound();
       }
     }
@@ -1281,7 +1667,7 @@
       bannerTimer--;
       if (bannerTimer <= 0) {
         fightBanner.classList.add('hidden');
-        if (gameMode === 'ROUND_END') {
+        if (gameMode === 'ROUND_END' && onlineRole !== 'guest') {
           finishRoundTransition();
         }
       }
@@ -1294,7 +1680,7 @@
       }
     }
 
-    if (gameMode === 'ROUND_INTRO') {
+    if (gameMode === 'ROUND_INTRO' && onlineRole !== 'guest') {
       introTimer--;
       if (introTimer <= 0) {
         introPhase = 0;
@@ -1304,7 +1690,29 @@
       }
     }
 
-    if (gameMode === 'ROUND_INTRO' || gameMode === 'FIGHT' || gameMode === 'ROUND_END') {
+    // Online Guest: stream local input to Host
+    if (onlineRole === 'guest' && (gameMode === 'FIGHT' || gameMode === 'ROUND_INTRO')) {
+      onlineSyncTick++;
+      const hasTrigger =
+        keysJustPressed.has('KeyA') || keysJustPressed.has('KeyS') || keysJustPressed.has('KeyX');
+      if (hasTrigger || onlineSyncTick % 2 === 0) {
+        OnlineManager.sendBroadcast('input', {
+          left: keysHeld.has('ArrowLeft'),
+          right: keysHeld.has('ArrowRight'),
+          up: keysHeld.has('ArrowUp'),
+          down: keysHeld.has('ArrowDown'),
+          block: keysHeld.has('KeyZ'),
+          punch: keysJustPressed.has('KeyA'),
+          kick: keysJustPressed.has('KeyS'),
+          transform: keysJustPressed.has('KeyX')
+        });
+      }
+    }
+
+    if (
+      (gameMode === 'ROUND_INTRO' || gameMode === 'FIGHT' || gameMode === 'ROUND_END') &&
+      onlineRole !== 'guest'
+    ) {
       if (hitstopFrames > 0) {
         hitstopFrames--;
       } else {
@@ -1323,6 +1731,20 @@
         resolvePushbox();
       }
       updateHUD();
+
+      // Online Host: broadcast authoritative state to Guest
+      if (onlineRole === 'host') {
+        onlineSyncTick++;
+        if (onlineSyncTick % 2 === 0) {
+          OnlineManager.sendBroadcast('state', {
+            gameMode,
+            roundNumber,
+            roundTimer,
+            p1: packFighterState(p1),
+            p2: packFighterState(p2)
+          });
+        }
+      }
     }
 
     ctx.save();
