@@ -312,6 +312,7 @@
       roundsWon: 0,
       state: 'idle',
       stateFrame: 0,
+      walkFrame: 0,
       hasHitThisAttack: false,
       comboQueued: false,
       comboCount: 0,
@@ -361,6 +362,7 @@
       f.isBeast = false;
       f.state = 'idle';
       f.stateFrame = 0;
+      f.walkFrame = 0;
       f.hasHitThisAttack = false;
       f.comboQueued = false;
       f.comboCount = 0;
@@ -629,17 +631,29 @@
 
     if (left && !right) {
       f.vx = -moveSpeed;
-      if (grounded) f.state = 'walk';
+      if (grounded) {
+        f.state = 'walk';
+        f.walkFrame++;
+      } else {
+        f.walkFrame = 0;
+      }
     } else if (right && !left) {
       f.vx = moveSpeed;
-      if (grounded) f.state = 'walk';
+      if (grounded) {
+        f.state = 'walk';
+        f.walkFrame++;
+      } else {
+        f.walkFrame = 0;
+      }
     } else {
       f.vx = 0;
+      f.walkFrame = 0;
       if (grounded) f.state = 'idle';
     }
 
     if (!grounded) {
       f.state = 'jump';
+      f.walkFrame = 0;
     }
   }
 

@@ -143,7 +143,7 @@ const SPRITE_VERSION = '2';
 function preloadAllSprites() {
   FIGHTERS.forEach((f) => {
     ['human', 'beast'].forEach((form) => {
-      ['', '_punch', '_kick'].forEach((action) => {
+      ['', '_punch', '_kick', '_walk'].forEach((action) => {
         const key = `${f.id}_${form}${action}`;
         const img = new Image();
         const entry = { img, loaded: false, error: false };
@@ -353,12 +353,14 @@ function computePose(state, timer, isBeast) {
 function drawFighter(ctx, f, globalTime) {
   const idleImg = getFighterSprite(f.data.id, f.isBeast, '');
   if (idleImg) {
-    // Select action sprite during Active & early Recovery phases, with graceful fallback to Idle
+    // Select action sprite during Active & early Recovery phases, or 2-frame Walk stride
     let activeImg = idleImg;
     if (f.state === 'punch' && f.stateFrame >= 6 && f.stateFrame < 17) {
       activeImg = getFighterSprite(f.data.id, f.isBeast, '_punch') || idleImg;
     } else if (f.state === 'kick' && f.stateFrame >= 10 && f.stateFrame < 25) {
       activeImg = getFighterSprite(f.data.id, f.isBeast, '_kick') || idleImg;
+    } else if (f.state === 'walk' && Math.floor((f.walkFrame || 0) / 9) % 2 === 1) {
+      activeImg = getFighterSprite(f.data.id, f.isBeast, '_walk') || idleImg;
     }
     drawSpriteFighter(ctx, f, activeImg, globalTime);
     return;
@@ -427,10 +429,13 @@ function drawSpriteFighter(ctx, f, img, globalTime) {
       sy = 1 + Math.sin(t) * 0.022;
       sx = 1 - Math.sin(t) * 0.012;
       break;
-    case 'walk':
-      offsetY = -Math.abs(Math.sin(t * 2.2)) * 5;
-      rot = 3.5 * deg;
+    case 'walk': {
+      const isStep = Math.floor((f.walkFrame || 0) / 9) % 2 === 1;
+      offsetY = isStep ? -3 : 0;
+      const walkingForward = f.vx * f.facing >= 0;
+      rot = (walkingForward ? 3 : -2) * deg;
       break;
+    }
     case 'crouch':
       sy = 0.76;
       sx = 1.08;
