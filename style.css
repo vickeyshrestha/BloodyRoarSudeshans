@@ -939,6 +939,214 @@ kbd {
   }
 }
 
+/* Mobile Touch Controls */
+.touch-controls {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 10px;
+  padding: 0 14px;
+  display: none;
+  justify-content: space-between;
+  align-items: flex-end;
+  pointer-events: none;
+  z-index: 30;
+}
+
+.touch-dpad,
+.touch-actions {
+  pointer-events: auto;
+  touch-action: none;
+}
+
+.touch-dpad {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.dpad-mid {
+  display: flex;
+  gap: 34px;
+}
+
+.touch-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(12, 16, 26, 0.72);
+  color: #f4f7ff;
+  border: 2px solid rgba(255, 255, 255, 0.28);
+  border-radius: 10px;
+  font-weight: 900;
+  touch-action: none;
+  -webkit-tap-highlight-color: transparent;
+  cursor: pointer;
+}
+
+.touch-btn.pressed,
+.touch-btn:active {
+  background: rgba(201, 154, 59, 0.45);
+  border-color: var(--accent-gold);
+  transform: scale(0.94);
+}
+
+.touch-dpad .touch-btn {
+  width: 44px;
+  height: 40px;
+  font-size: 16px;
+}
+
+.touch-actions {
+  display: grid;
+  grid-template-columns: repeat(2, 56px);
+  gap: 8px;
+}
+
+.act-btn {
+  width: 56px;
+  height: 50px;
+}
+
+.act-btn span {
+  font-size: 16px;
+  line-height: 1;
+}
+
+.act-btn small {
+  font-size: 8px;
+  letter-spacing: 0.05em;
+  color: var(--accent-gold);
+  margin-top: 2px;
+}
+
+.act-x {
+  border-color: rgba(255, 46, 76, 0.65);
+}
+
+.act-z {
+  border-color: rgba(94, 168, 201, 0.65);
+}
+
+/* Show touch controls on touch devices or narrow screens */
+@media (hover: none) and (pointer: coarse), (max-width: 900px) {
+  .touch-controls {
+    display: flex;
+  }
+  .hud-controls-bar {
+    display: none;
+  }
+}
+
+/* Responsive Fullscreen & Mobile Layout */
+@media (max-width: 900px), (max-height: 560px) {
+  body {
+    background: #07080c;
+  }
+  #game-shell {
+    padding: 0;
+    max-width: 100vw;
+    width: 100vw;
+    height: 100dvh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  #arcade-frame {
+    width: 100vw;
+    height: 100dvh;
+    max-height: 100dvh;
+    aspect-ratio: auto;
+    border: none;
+    border-radius: 0;
+  }
+  #game-canvas {
+    object-fit: contain;
+    background: #07080c;
+  }
+  .utility-bar {
+    top: 8px;
+    bottom: auto;
+    right: 8px;
+    display: flex;
+    gap: 6px;
+  }
+  .hud-top {
+    padding: 8px 10px 0;
+    gap: 8px;
+  }
+  .fighter-name {
+    font-size: 11px;
+  }
+  .health-bar-outer {
+    height: 15px;
+  }
+  .timer-box {
+    font-size: 20px;
+    padding: 1px 10px;
+  }
+  .title-bloody {
+    font-size: clamp(28px, 7vw, 48px);
+  }
+  .title-sub {
+    font-size: clamp(12px, 3vw, 18px);
+  }
+  .controls-grid {
+    grid-template-columns: 1fr;
+    font-size: 11px;
+  }
+  .screen-overlay {
+    padding: 10px;
+    overflow-y: auto;
+    justify-content: flex-start;
+  }
+  .roster-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 6px;
+  }
+  .card-portrait-wrap,
+  .card-portrait {
+    width: 56px;
+    height: 56px;
+  }
+  .card-beast-mini {
+    width: 24px;
+    height: 24px;
+  }
+  .select-footer {
+    flex-direction: column;
+    gap: 8px;
+    text-align: center;
+  }
+  .vs-container {
+    gap: 12px;
+  }
+  .vs-side {
+    min-width: 0;
+    flex: 1;
+    padding: 10px;
+  }
+  .vs-side canvas {
+    width: 110px;
+    height: 110px;
+  }
+  .vs-emblem {
+    font-size: 32px;
+  }
+  .credits-overlay {
+    padding: 10px;
+    justify-content: center;
+    align-items: flex-end;
+  }
+  .credits-panel {
+    width: 100%;
+    max-width: 420px;
+    max-height: 56dvh;
+  }
+}
+
 @keyframes pulseGlow {
   from { filter: brightness(1); }
   to { filter: brightness(1.3); }

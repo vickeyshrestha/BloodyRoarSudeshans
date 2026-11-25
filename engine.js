@@ -41,6 +41,7 @@
   const btnChangeFighter = document.getElementById('btn-change-fighter');
   const btnCreditsRematch = document.getElementById('btn-credits-rematch');
   const btnCreditsChange = document.getElementById('btn-credits-change');
+  const btnFullscreen = document.getElementById('btn-fullscreen');
   const btnMute = document.getElementById('btn-mute');
 
   // Game State
@@ -117,6 +118,39 @@
   btnMute.addEventListener('click', () => {
     const muted = SoundFX.toggleMute();
     btnMute.textContent = muted ? 'SFX: OFF' : 'SFX: ON';
+  });
+
+  if (btnFullscreen) {
+    btnFullscreen.addEventListener('click', () => {
+      const target = document.documentElement;
+      if (!document.fullscreenElement) {
+        if (target.requestFullscreen) target.requestFullscreen().catch(() => {});
+        else if (target.webkitRequestFullscreen) target.webkitRequestFullscreen();
+      } else {
+        if (document.exitFullscreen) document.exitFullscreen().catch(() => {});
+        else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+      }
+    });
+  }
+
+  // Mobile Touch Controls Binding
+  document.querySelectorAll('.touch-btn[data-key]').forEach((btn) => {
+    const code = btn.dataset.key;
+    const press = (e) => {
+      e.preventDefault();
+      if (!keysHeld.has(code)) keysJustPressed.add(code);
+      keysHeld.add(code);
+      btn.classList.add('pressed');
+    };
+    const release = (e) => {
+      e.preventDefault();
+      keysHeld.delete(code);
+      btn.classList.remove('pressed');
+    };
+    btn.addEventListener('pointerdown', press);
+    btn.addEventListener('pointerup', release);
+    btn.addEventListener('pointercancel', release);
+    btn.addEventListener('pointerleave', release);
   });
 
   // Build Character Select Cards

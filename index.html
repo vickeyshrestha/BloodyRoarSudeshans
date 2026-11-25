@@ -2,7 +2,8 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
   <title>Bloody Roar: Sudeshans</title>
   <link rel="stylesheet" href="style.css" />
 </head>
@@ -83,12 +84,30 @@
           <div id="beast-activate-name" class="beast-activate-name">- GOAT</div>
         </div>
 
-        <!-- In-Game Action Controls Legend -->
+        <!-- In-Game Action Controls Legend (Desktop) -->
         <div id="hud-controls-bar" class="hud-controls-bar">
           <div id="hud-key-A" class="hud-ctrl-pill"><kbd>A</kbd> <span>Punch (Combo &rarr; Kick)</span></div>
           <div id="hud-key-S" class="hud-ctrl-pill"><kbd>S</kbd> <span>Kick (Heavy Knockback)</span></div>
           <div id="hud-key-Z" class="hud-ctrl-pill"><kbd>Z</kbd> <span>Hold: Block (-75% dmg)</span></div>
           <div id="hud-key-X" class="hud-ctrl-pill"><kbd>X</kbd> <span>Beast (&ge;50% Gauge)</span></div>
+        </div>
+
+        <!-- Mobile Touch Controls -->
+        <div id="touch-controls" class="touch-controls">
+          <div class="touch-dpad">
+            <button type="button" class="touch-btn dpad-up" data-key="ArrowUp" aria-label="Jump">&#9650;</button>
+            <div class="dpad-mid">
+              <button type="button" class="touch-btn dpad-left" data-key="ArrowLeft" aria-label="Move Left">&#9664;</button>
+              <button type="button" class="touch-btn dpad-right" data-key="ArrowRight" aria-label="Move Right">&#9654;</button>
+            </div>
+            <button type="button" class="touch-btn dpad-down" data-key="ArrowDown" aria-label="Crouch">&#9660;</button>
+          </div>
+          <div class="touch-actions">
+            <button type="button" class="touch-btn act-btn act-a" data-key="KeyA"><span>A</span><small>PUNCH</small></button>
+            <button type="button" class="touch-btn act-btn act-s" data-key="KeyS"><span>S</span><small>KICK</small></button>
+            <button type="button" class="touch-btn act-btn act-z" data-key="KeyZ"><span>Z</span><small>BLOCK</small></button>
+            <button type="button" class="touch-btn act-btn act-x" data-key="KeyX"><span>X</span><small>BEAST</small></button>
+          </div>
         </div>
       </div>
 
@@ -202,6 +221,7 @@
 
       <!-- Top-right utility bar -->
       <div class="utility-bar">
+        <button id="btn-fullscreen" class="util-btn" title="Toggle Fullscreen">FULLSCREEN</button>
         <button id="btn-mute" class="util-btn" title="Toggle Sound">SFX: ON</button>
       </div>
     </div>
