@@ -32,6 +32,8 @@
   const fightBanner = document.getElementById('fight-banner');
   const fightBannerText = document.getElementById('fight-banner-text');
   const fightBannerSub = document.getElementById('fight-banner-sub');
+  const beastActivateBanner = document.getElementById('beast-activate-banner');
+  const beastActivateName = document.getElementById('beast-activate-name');
 
   const btnStart = document.getElementById('btn-start');
   const btnConfirmFighter = document.getElementById('btn-confirm-fighter');
@@ -52,6 +54,7 @@
   let roundTimer = 99;
   let timerTicks = 0;
   let bannerTimer = 0;
+  let beastBannerTimer = 0;
   let vsTimer = 0;
 
   let p1 = null;
@@ -317,6 +320,14 @@
     bannerTimer = duration;
   }
 
+  function showBeastActivateBanner(beastName) {
+    beastActivateName.textContent = `- ${beastName.toUpperCase()}`;
+    beastActivateBanner.classList.remove('hidden', 'slam');
+    void beastActivateBanner.offsetWidth;
+    beastActivateBanner.classList.add('slam');
+    beastBannerTimer = 78;
+  }
+
   // Deliberate, Weighty Attack Frame Data (~30-35% slower with clear startup & recovery)
   function getAttackSpec(fighter, type) {
     const pwr = fighter.data.stats.power;
@@ -356,6 +367,7 @@
     fighter.stateFrame = 0;
     fighter.vx = 0;
     SoundFX.playTransform(fighter.data.id);
+    showBeastActivateBanner(fighter.data.beastName);
     shakeFrames = 15;
     shakeIntensity = 7;
 
@@ -1012,6 +1024,13 @@
         if (gameMode === 'ROUND_END') {
           finishRoundTransition();
         }
+      }
+    }
+
+    if (beastBannerTimer > 0) {
+      beastBannerTimer--;
+      if (beastBannerTimer <= 0) {
+        beastActivateBanner.classList.add('hidden');
       }
     }
 
