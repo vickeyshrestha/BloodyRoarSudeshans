@@ -384,7 +384,7 @@
     timerTicks = 0;
     gameMode = 'ROUND_INTRO';
     introPhase = 1;
-    introTimer = 120; // 2 seconds hold for Round 1 / Round 2 / Final Round
+    introTimer = 240; // 4 seconds hold for Round 1 / Round 2 / Final Round
 
     showOnlyScreen(null);
     hudEl.classList.remove('hidden');
@@ -392,7 +392,7 @@
 
     const roundTitle =
       roundNumber === 1 ? 'ROUND 1' : roundNumber === 2 ? 'ROUND 2' : 'FINAL ROUND';
-    showBanner(roundTitle, arcadeStage === 3 ? 'CLASS BOSS STAGE' : `STAGE ${arcadeStage} OF 3`, 120);
+    showBanner(roundTitle, arcadeStage === 3 ? 'CLASS BOSS STAGE' : `STAGE ${arcadeStage} OF 3`, 240);
     SoundFX.playMenuSelect();
 
     if (arcadeStage === 3 && roundNumber === 1) {
@@ -1048,6 +1048,12 @@
     document.getElementById('p2-name').textContent = p2.data.name.toUpperCase();
     document.getElementById('round-label').textContent = `ROUND ${roundNumber}`;
 
+    const stageBadge = document.getElementById('stage-badge');
+    if (stageBadge) {
+      stageBadge.textContent = arcadeStage === 3 ? 'STAGE 3 • BOSS' : `STAGE ${arcadeStage} / 3`;
+      stageBadge.classList.toggle('boss', arcadeStage === 3);
+    }
+
     const timerBox = document.getElementById('timer-box');
     timerBox.textContent = String(roundTimer).padStart(2, '0');
     timerBox.classList.toggle('urgent', roundTimer <= 15);
@@ -1270,7 +1276,7 @@
       if (introTimer <= 0) {
         introPhase = 0;
         gameMode = 'FIGHT';
-        showBanner('FIGHT!', '', 90); // 1.5 seconds hold for FIGHT!
+        showBanner('FIGHT!', '', 150); // 2.5 seconds hold for FIGHT!
         SoundFX.playRoundStart();
       }
     }

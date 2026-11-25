@@ -368,7 +368,26 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  min-width: 90px;
+  min-width: 96px;
+}
+
+.stage-badge {
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  color: #fff;
+  background: rgba(184, 29, 44, 0.9);
+  border: 2px solid #000;
+  border-radius: 4px;
+  padding: 1px 8px;
+  margin-bottom: 3px;
+  white-space: nowrap;
+  box-shadow: 0 2px 0 #000;
+}
+
+.stage-badge.boss {
+  background: linear-gradient(90deg, #b81d2c, #c99a3b);
+  color: #fff;
 }
 
 .round-label {
@@ -1258,6 +1277,25 @@ kbd {
   .timer-box {
     font-size: 20px;
     padding: 1px 10px;
+  }
+  .stage-badge {
+    font-size: 8px;
+    padding: 1px 5px;
+    margin-bottom: 2px;
+  }
+  .beast-ready-callout {
+    font-size: 11px;
+    padding: 4px 8px;
+    gap: 5px;
+    margin-top: 4px;
+  }
+  .beast-ready-callout kbd {
+    font-size: 11px;
+    padding: 0 4px;
+  }
+  .beast-ready-icon {
+    width: 14px;
+    height: 14px;
   }
   .title-bloody {
     font-size: clamp(28px, 7vw, 48px);
