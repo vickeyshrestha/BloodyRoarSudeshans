@@ -28,6 +28,7 @@
   const bossChallengeScreen = document.getElementById('boss-challenge-screen');
   const victoryScreen = document.getElementById('victory-screen');
   const creditsCutscene = document.getElementById('credits-cutscene');
+  const pauseScreen = document.getElementById('pause-screen');
 
   const globalPlayerNameInput = document.getElementById('global-player-name');
   const onlinePlayerNameInput = document.getElementById('online-player-name');
@@ -63,8 +64,16 @@
   const btnScoresRefresh = document.getElementById('btn-scores-refresh');
   const btnScoresBack = document.getElementById('btn-scores-back');
   const btnStoryContinue = document.getElementById('btn-story-continue');
+  const btnStoryMenu = document.getElementById('btn-story-menu');
   const btnConfirmFighter = document.getElementById('btn-confirm-fighter');
+  const btnSelectMenu = document.getElementById('btn-select-menu');
+  const btnVsMenu = document.getElementById('btn-vs-menu');
   const btnAcceptChallenge = document.getElementById('btn-accept-challenge');
+  const btnBossMenu = document.getElementById('btn-boss-menu');
+  const btnPause = document.getElementById('btn-pause');
+  const btnPauseResume = document.getElementById('btn-pause-resume');
+  const btnPauseRestart = document.getElementById('btn-pause-restart');
+  const btnPauseMenu = document.getElementById('btn-pause-menu');
   const btnRematch = document.getElementById('btn-rematch');
   const btnChangeFighter = document.getElementById('btn-change-fighter');
   const onlineRematchPrompt = document.getElementById('online-rematch-prompt');
@@ -94,6 +103,7 @@
   let onlineGuestName = 'Guest';
   let onlineSyncTick = 0;
   let standaloneCredits = false;
+  let isPaused = false;
   let pendingNextMode = 'arcade'; // 'arcade' | 'online'
   let remoteInput = {
     left: false,
@@ -142,6 +152,13 @@
     if (!keysHeld.has(code)) {
       keysJustPressed.add(code);
       if (code === 'KeyH') debugBoxes = !debugBoxes;
+      if (
+        (code === 'Escape' || code === 'KeyP') &&
+        !onlineRole &&
+        (gameMode === 'FIGHT' || gameMode === 'ROUND_INTRO' || gameMode === 'ROUND_END')
+      ) {
+        togglePause();
+      }
     }
     keysHeld.add(code);
 
@@ -192,8 +209,20 @@
   btnScoresBack.addEventListener('click', goToMenu);
 
   btnStoryContinue.addEventListener('click', continueFromStory);
+  btnStoryMenu.addEventListener('click', goToMenu);
   btnConfirmFighter.addEventListener('click', startMatchFromSelect);
+  btnSelectMenu.addEventListener('click', goToMenu);
+  btnVsMenu.addEventListener('click', goToMenu);
   btnAcceptChallenge.addEventListener('click', acceptBossChallenge);
+  btnBossMenu.addEventListener('click', goToMenu);
+  btnPause.addEventListener('click', togglePause);
+  btnPauseResume.addEventListener('click', togglePause);
+  btnPauseRestart.addEventListener('click', () => {
+    isPaused = false;
+    pauseScreen.classList.add('hidden');
+    startMatch(p1.data, p2.data);
+  });
+  btnPauseMenu.addEventListener('click', goToMenu);
   btnRematch.addEventListener('click', () => {
     SoundFX.playMenuConfirm();
     if (onlineRole) {
@@ -371,9 +400,26 @@
       vsScreen,
       bossChallengeScreen,
       victoryScreen,
-      creditsCutscene
+      creditsCutscene,
+      pauseScreen
     ].forEach((el) => el.classList.add('hidden'));
     if (screen) screen.classList.remove('hidden');
+    updatePauseButtonVisibility();
+  }
+
+  function updatePauseButtonVisibility() {
+    const canPause =
+      !onlineRole &&
+      (gameMode === 'FIGHT' || gameMode === 'ROUND_INTRO' || gameMode === 'ROUND_END');
+    if (btnPause) btnPause.classList.toggle('hidden', !canPause);
+  }
+
+  function togglePause() {
+    if (onlineRole) return; // Never pause online multiplayer
+    if (gameMode !== 'FIGHT' && gameMode !== 'ROUND_INTRO' && gameMode !== 'ROUND_END') return;
+    isPaused = !isPaused;
+    pauseScreen.classList.toggle('hidden', !isPaused);
+    SoundFX.playMenuSelect();
   }
 
   function syncPlayerNameFromInput(val) {
@@ -389,6 +435,7 @@
   function goToMenu() {
     SoundFX.startBGM();
     SoundFX.playMenuConfirm();
+    isPaused = false;
     standaloneCredits = false;
     onlineRole = null;
     OnlineManager.closeHostedRoom();
@@ -1753,6 +1800,11 @@
 
   // Main 60 FPS Loop
   function loop() {
+    if (isPaused) {
+      keysJustPressed.clear();
+      requestAnimationFrame(loop);
+      return;
+    }
     globalTime++;
 
     if (gameMode === 'VS') {

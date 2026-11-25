@@ -232,7 +232,8 @@
               Fangs will tear. Claws will rip through tailored reunion jackets. Tusks will shatter ribs—and egos. Only one classmate will stand atop the wreckage of the banquet hall to claim the Golden Trophy... and force the losers to pay the dinner bill.
             </p>
           </div>
-          <div class="story-footer">
+          <div class="story-footer" style="gap:10px;">
+            <button id="btn-story-menu" class="arcade-btn secondary">MAIN MENU</button>
             <button id="btn-story-continue" class="arcade-btn primary pulse-btn">ENTER THE ARENA</button>
           </div>
         </div>
@@ -253,7 +254,10 @@
             <span class="sel-sep">&bull;</span>
             <span id="sel-desc" class="sel-desc">Agile high jumper with powerful horn &amp; kick knockback.</span>
           </div>
-          <button id="btn-confirm-fighter" class="arcade-btn primary">FIGHT!</button>
+          <div style="display:flex; gap:10px;">
+            <button id="btn-select-menu" class="arcade-btn secondary">MAIN MENU</button>
+            <button id="btn-confirm-fighter" class="arcade-btn primary">FIGHT!</button>
+          </div>
         </div>
       </div>
 
@@ -275,6 +279,7 @@
             <div id="vs-p2-beast" class="vs-beast">BEAST: ELEPHANT</div>
           </div>
         </div>
+        <button id="btn-vs-menu" class="arcade-btn secondary" style="margin-top:16px; padding:8px 18px; font-size:12px;">MAIN MENU</button>
       </div>
 
       <!-- Final Boss Challenge Overlay -->
@@ -286,7 +291,10 @@
           <div class="boss-challenge-name">VICKEY SHRESTHA</div>
           <div class="boss-challenge-beast">BEAST: CAT</div>
           <p id="boss-challenge-quote" class="boss-challenge-quote">"I coded this game, so I definitely rigged my own hitboxes!"</p>
-          <button id="btn-accept-challenge" class="arcade-btn primary pulse-btn">ACCEPT CHALLENGE</button>
+          <div style="display:flex; gap:10px; justify-content:center;">
+            <button id="btn-boss-menu" class="arcade-btn secondary">MAIN MENU</button>
+            <button id="btn-accept-challenge" class="arcade-btn primary pulse-btn">ACCEPT CHALLENGE</button>
+          </div>
         </div>
       </div>
 
@@ -340,8 +348,23 @@
         </div>
       </div>
 
+      <!-- Pause Overlay (Offline / Arcade only) -->
+      <div id="pause-screen" class="screen-overlay hidden">
+        <div class="victory-card">
+          <div class="arcade-kicker">ARCADE PAUSED</div>
+          <h2 class="victory-title">PAUSED</h2>
+          <p class="victory-subtitle">Press <kbd>P</kbd> or <kbd>Esc</kbd> to resume</p>
+          <div class="victory-actions" style="flex-wrap:wrap;">
+            <button id="btn-pause-resume" class="arcade-btn primary">RESUME</button>
+            <button id="btn-pause-restart" class="arcade-btn secondary">RESTART</button>
+            <button id="btn-pause-menu" class="arcade-btn secondary">MAIN MENU</button>
+          </div>
+        </div>
+      </div>
+
       <!-- Top-right utility bar -->
       <div class="utility-bar">
+        <button id="btn-pause" class="util-btn hidden" title="Pause Game (P / Esc)">PAUSE</button>
         <button id="btn-fullscreen" class="util-btn" title="Toggle Fullscreen">FULLSCREEN</button>
         <button id="btn-mute" class="util-btn" title="Toggle Sound">SFX: ON</button>
       </div>
