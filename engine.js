@@ -22,6 +22,7 @@
   const selectScreen = document.getElementById('select-screen');
   const vsScreen = document.getElementById('vs-screen');
   const victoryScreen = document.getElementById('victory-screen');
+  const creditsCutscene = document.getElementById('credits-cutscene');
 
   const rosterGrid = document.getElementById('roster-grid');
   const selName = document.getElementById('sel-name');
@@ -36,6 +37,8 @@
   const btnConfirmFighter = document.getElementById('btn-confirm-fighter');
   const btnRematch = document.getElementById('btn-rematch');
   const btnChangeFighter = document.getElementById('btn-change-fighter');
+  const btnCreditsRematch = document.getElementById('btn-credits-rematch');
+  const btnCreditsChange = document.getElementById('btn-credits-change');
   const btnMute = document.getElementById('btn-mute');
 
   // Game State
@@ -97,6 +100,14 @@
     startMatch(p1.data, p2.data);
   });
   btnChangeFighter.addEventListener('click', () => {
+    SoundFX.playMenuSelect();
+    goToSelect();
+  });
+  btnCreditsRematch.addEventListener('click', () => {
+    SoundFX.playMenuConfirm();
+    startMatch(p1.data, p2.data);
+  });
+  btnCreditsChange.addEventListener('click', () => {
     SoundFX.playMenuSelect();
     goToSelect();
   });
@@ -196,7 +207,7 @@
   }
 
   function showOnlyScreen(screen) {
-    [titleScreen, selectScreen, vsScreen, victoryScreen].forEach((el) => el.classList.add('hidden'));
+    [titleScreen, selectScreen, vsScreen, victoryScreen, creditsCutscene].forEach((el) => el.classList.add('hidden'));
     if (screen) screen.classList.remove('hidden');
   }
 
@@ -702,14 +713,31 @@
 
   function finishRoundTransition() {
     if (p1.roundsWon >= 2 || p2.roundsWon >= 2) {
-      gameMode = 'MATCH_END';
       const p1Won = p1.roundsWon >= 2;
-      const champ = p1Won ? p1 : p2;
-      document.getElementById('victory-title').textContent = p1Won ? 'PLAYER 1 WINS!' : 'CPU WINS!';
-      document.getElementById('victory-subtitle').textContent =
-        `${champ.data.name} (Beast: ${champ.data.beastName}) claims victory ${p1.roundsWon} - ${p2.roundsWon}!`;
       fightBanner.classList.add('hidden');
-      showOnlyScreen(victoryScreen);
+      hudEl.classList.add('hidden');
+
+      if (p1Won) {
+        gameMode = 'VICTORY_CUTSCENE';
+        p1.x = 265;
+        p1.y = STAGE.groundY;
+        p1.facing = 1;
+        p1.state = 'victory';
+        document.getElementById('credits-winner-title').textContent =
+          `${p1.data.name.toUpperCase()} WINS!`;
+        // Restart CSS scroll animation cleanly
+        const roll = document.getElementById('credits-roll');
+        roll.style.animation = 'none';
+        void roll.offsetWidth;
+        roll.style.animation = '';
+        showOnlyScreen(creditsCutscene);
+      } else {
+        gameMode = 'MATCH_END';
+        document.getElementById('victory-title').textContent = 'CPU WINS!';
+        document.getElementById('victory-subtitle').textContent =
+          `${p2.data.name} (Beast: ${p2.data.beastName}) claims victory ${p2.roundsWon} - ${p1.roundsWon}!`;
+        showOnlyScreen(victoryScreen);
+      }
     } else {
       roundNumber++;
       startRound();
@@ -1021,11 +1049,127 @@
       drawFighter(ctx, p1, globalTime);
       drawFighter(ctx, p2, globalTime);
       renderEffects();
+    } else if (gameMode === 'VICTORY_CUTSCENE' && p1) {
+      drawTrophyCutscene(ctx, p1, globalTime);
+      renderEffects();
     }
     ctx.restore();
 
     keysJustPressed.clear();
     requestAnimationFrame(loop);
+  }
+
+  function drawTrophyCutscene(ctx, winner, time) {
+    // Spotlight beam on the champion
+    ctx.save();
+    const beam = ctx.createLinearGradient(265, 0, 265, STAGE.groundY);
+    beam.addColorStop(0, 'rgba(255, 215, 90, 0.35)');
+    beam.addColorStop(1, 'rgba(255, 215, 90, 0.04)');
+    ctx.fillStyle = beam;
+    ctx.beginPath();
+    ctx.moveTo(195, 0);
+    ctx.lineTo(335, 0);
+    ctx.lineTo(410, STAGE.groundY + 15);
+    ctx.lineTo(120, STAGE.groundY + 15);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+
+    // Confetti shower
+    if (time % 4 === 0) {
+      const colors = ['#ffd700', '#ff2e4c', '#24e5ff', '#52ff88', '#ffffff'];
+      particles.push({
+        x: 60 + Math.random() * 440,
+        y: -10,
+        vx: (Math.random() - 0.5) * 2.2,
+        vy: 1.8 + Math.random() * 2.4,
+        life: 160,
+        maxLife: 160,
+        color: colors[Math.floor(Math.random() * colors.length)],
+        size: 4 + Math.random() * 3
+      });
+    }
+
+    // Champion bouncing in celebration
+    const bounce = Math.abs(Math.sin(time * 0.1)) * -10;
+    const savedY = winner.y;
+    winner.y = STAGE.groundY + bounce;
+    drawFighter(ctx, winner, time);
+    winner.y = savedY;
+
+    // Gleaming Golden Championship Trophy held up!
+    const tx = winner.x + 48;
+    const ty = STAGE.groundY - 98 + bounce;
+    ctx.save();
+    ctx.translate(tx, ty);
+    ctx.rotate(Math.sin(time * 0.08) * 0.08);
+
+    // Trophy base
+    ctx.fillStyle = '#3b2412';
+    ctx.strokeStyle = '#090a0f';
+    ctx.lineWidth = 2.5;
+    ctx.fillRect(-14, 18, 28, 10);
+    ctx.strokeRect(-14, 18, 28, 10);
+
+    // Stem
+    ctx.fillStyle = '#e5b83b';
+    ctx.fillRect(-5, 6, 10, 12);
+    ctx.strokeRect(-5, 6, 10, 12);
+
+    // Cup & Handles
+    ctx.strokeStyle = '#ffd700';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(-15, -10, 8, Math.PI * 0.5, Math.PI * 1.5);
+    ctx.arc(15, -10, 8, -Math.PI * 0.5, Math.PI * 0.5);
+    ctx.stroke();
+
+    const cupGrad = ctx.createLinearGradient(-16, -24, 16, 8);
+    cupGrad.addColorStop(0, '#fff2a6');
+    cupGrad.addColorStop(0.5, '#ffd700');
+    cupGrad.addColorStop(1, '#b88214');
+    ctx.fillStyle = cupGrad;
+    ctx.strokeStyle = '#090a0f';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.moveTo(-16, -22);
+    ctx.lineTo(16, -22);
+    ctx.quadraticCurveTo(14, 6, 0, 8);
+    ctx.quadraticCurveTo(-14, 6, -16, -22);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    // "#1" on trophy
+    ctx.fillStyle = '#090a0f';
+    ctx.font = '900 11px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('#1', 0, -5);
+    ctx.restore();
+
+    // Funny Speech Bubble above winner
+    const quotes = [
+      'MOM, GET THE CAMERA!!',
+      'EZ CLAP! NEXT CHALLENGER?',
+      'WHO ORDERED THE TROPHY?!',
+      '100% SKILL. ZERO BUTTON MASHING.'
+    ];
+    const quote = quotes[Math.floor(time / 150) % quotes.length];
+    ctx.save();
+    ctx.fillStyle = '#ffffff';
+    ctx.strokeStyle = '#090a0f';
+    ctx.lineWidth = 3;
+    const bx = winner.x + 10;
+    const by = STAGE.groundY - 190 + bounce * 0.5;
+    ctx.beginPath();
+    ctx.roundRect(bx - 135, by - 22, 270, 38, 12);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = '#090a0f';
+    ctx.font = '900 13px "Trebuchet MS", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(quote, bx, by + 2);
+    ctx.restore();
   }
 
   buildRoster();

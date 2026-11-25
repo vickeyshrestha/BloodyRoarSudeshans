@@ -782,6 +782,106 @@ kbd {
   justify-content: center;
 }
 
+/* Trophy Cutscene + Funny Credits Overlay */
+.credits-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 25;
+  display: flex;
+  justify-content: flex-end;
+  align-items: stretch;
+  padding: 18px 20px 44px;
+  pointer-events: auto;
+}
+
+.credits-panel {
+  width: 430px;
+  display: flex;
+  flex-direction: column;
+  background: rgba(8, 10, 16, 0.9);
+  border: 3px solid var(--accent-gold);
+  border-radius: 10px;
+  padding: 14px 18px;
+  box-shadow: 0 18px 45px rgba(0, 0, 0, 0.85);
+}
+
+.credits-header {
+  text-align: center;
+  border-bottom: 2px solid #2b3245;
+  padding-bottom: 8px;
+}
+
+.credits-header h2 {
+  font-size: 24px;
+  font-weight: 900;
+  color: #fff;
+  text-shadow: 2px 2px 0 #000;
+}
+
+.credits-viewport {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+  margin: 10px 0;
+  mask-image: linear-gradient(to bottom, transparent 0%, black 12%, black 88%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 12%, black 88%, transparent 100%);
+}
+
+.credits-roll {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  text-align: center;
+  animation: scrollCredits 18s linear infinite;
+}
+
+.credit-block {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.credit-role {
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.16em;
+  color: var(--accent-gold);
+}
+
+.credit-name {
+  font-size: 16px;
+  font-weight: 900;
+  color: #fff;
+}
+
+.credit-footer {
+  font-size: 12px;
+  font-style: italic;
+  color: var(--text-muted);
+  margin-top: 8px;
+  line-height: 1.4;
+}
+
+.credits-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+
+.credits-actions .arcade-btn {
+  padding: 9px 16px;
+  font-size: 13px;
+}
+
+@keyframes scrollCredits {
+  0% {
+    transform: translateY(250px);
+  }
+  100% {
+    transform: translateY(-100%);
+  }
+}
+
 @keyframes pulseGlow {
   from { filter: brightness(1); }
   to { filter: brightness(1.3); }

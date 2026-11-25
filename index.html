@@ -151,15 +151,45 @@
         </div>
       </div>
 
-      <!-- Victory / Match End Overlay -->
+      <!-- Victory / Match End Overlay (CPU Wins) -->
       <div id="victory-screen" class="screen-overlay hidden">
         <div class="victory-card">
           <div id="victory-kicker" class="arcade-kicker">MATCH COMPLETE</div>
-          <h2 id="victory-title" class="victory-title">PLAYER 1 WINS!</h2>
-          <p id="victory-subtitle" class="victory-subtitle">Munna Thapa (Goat) claims victory!</p>
+          <h2 id="victory-title" class="victory-title">CPU WINS!</h2>
+          <p id="victory-subtitle" class="victory-subtitle">Better luck next time!</p>
           <div class="victory-actions">
             <button id="btn-rematch" class="arcade-btn primary">REMATCH</button>
             <button id="btn-change-fighter" class="arcade-btn secondary">CHANGE FIGHTER</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Player Victory Trophy Cutscene + Funny Credits Overlay -->
+      <div id="credits-cutscene" class="credits-overlay hidden">
+        <div class="credits-panel">
+          <div class="credits-header">
+            <span class="arcade-kicker">CHAMPION CROWNED!</span>
+            <h2 id="credits-winner-title">YOU WIN!</h2>
+          </div>
+          <div class="credits-viewport">
+            <div id="credits-roll" class="credits-roll">
+              <div class="credit-block"><span class="credit-role">CREATED BY</span><span class="credit-name">Vickey Shrestha</span></div>
+              <div class="credit-block"><span class="credit-role">DIRECTED BY</span><span class="credit-name">Vickey Shrestha</span></div>
+              <div class="credit-block"><span class="credit-role">EXECUTIVE PRODUCER</span><span class="credit-name">Vickey Shrestha</span></div>
+              <div class="credit-block"><span class="credit-role">LEAD GAMEPLAY ENGINEER</span><span class="credit-name">Vickey Shrestha</span></div>
+              <div class="credit-block"><span class="credit-role">CHIEF GOAT &amp; ANT WRANGLER</span><span class="credit-name">Vickey Shrestha</span></div>
+              <div class="credit-block"><span class="credit-role">SOUND EFFECTS (MOUTH NOISES)</span><span class="credit-name">Vickey Shrestha</span></div>
+              <div class="credit-block"><span class="credit-role">STUNT DOUBLE FOR ALL 6 FIGHTERS</span><span class="credit-name">Vickey Shrestha</span></div>
+              <div class="credit-block"><span class="credit-role">TROPHY POLISHING SPECIALIST</span><span class="credit-name">Vickey Shrestha</span></div>
+              <div class="credit-block"><span class="credit-role">UNPAID INTERN</span><span class="credit-name">Also Vickey Shrestha</span></div>
+              <div class="credit-block"><span class="credit-role">CATERING &amp; MOMO SUPPLY</span><span class="credit-name">Vickey Shrestha</span></div>
+              <div class="credit-block"><span class="credit-role">SPECIAL THANKS</span><span class="credit-name">Vickey Shrestha (for carrying the whole studio)</span></div>
+              <div class="credit-footer">No beasts were harmed in the making of this game.<br/>Except the CPU. The CPU definitely cried.</div>
+            </div>
+          </div>
+          <div class="credits-actions">
+            <button id="btn-credits-rematch" class="arcade-btn primary">REMATCH</button>
+            <button id="btn-credits-change" class="arcade-btn secondary">CHANGE FIGHTER</button>
           </div>
         </div>
       </div>
