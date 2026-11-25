@@ -67,7 +67,6 @@
   const btnStoryMenu = document.getElementById('btn-story-menu');
   const btnConfirmFighter = document.getElementById('btn-confirm-fighter');
   const btnSelectMenu = document.getElementById('btn-select-menu');
-  const btnVsMenu = document.getElementById('btn-vs-menu');
   const btnAcceptChallenge = document.getElementById('btn-accept-challenge');
   const btnBossMenu = document.getElementById('btn-boss-menu');
   const btnPause = document.getElementById('btn-pause');
@@ -212,7 +211,6 @@
   btnStoryMenu.addEventListener('click', goToMenu);
   btnConfirmFighter.addEventListener('click', startMatchFromSelect);
   btnSelectMenu.addEventListener('click', goToMenu);
-  btnVsMenu.addEventListener('click', goToMenu);
   btnAcceptChallenge.addEventListener('click', acceptBossChallenge);
   btnBossMenu.addEventListener('click', goToMenu);
   btnPause.addEventListener('click', togglePause);
@@ -781,11 +779,13 @@
         ? `BOSS: ${f2Data.name.toUpperCase()}`
         : f2Data.name.toUpperCase();
     document.getElementById('vs-p2-beast').textContent = `BEAST: ${f2Data.beastName.toUpperCase()}`;
-    drawPortrait(document.getElementById('vs-p1-canvas'), f1Data, false);
-    drawPortrait(document.getElementById('vs-p2-canvas'), f2Data, true);
+    const vsP1Canvas = document.getElementById('vs-p1-canvas');
+    const vsP2Canvas = document.getElementById('vs-p2-canvas');
+    drawPortrait(vsP1Canvas, f1Data, false);
+    drawPortrait(vsP2Canvas, f2Data, false);
 
     gameMode = 'VS';
-    vsTimer = 110;
+    vsTimer = 240; // ~4 seconds at 60 FPS
     hudEl.classList.add('hidden');
     showOnlyScreen(vsScreen);
   }
