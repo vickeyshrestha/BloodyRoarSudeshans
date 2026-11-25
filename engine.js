@@ -119,6 +119,7 @@
   let bannerTimer = 0;
   let introPhase = 0; // 0: none, 1: ROUND X flash, 2: FIGHT! flash
   let introTimer = 0;
+  let postMatchCallback = null;
   let beastBannerTimer = 0;
   let vsTimer = 0;
   let debugBoxes = false; // Toggle with 'H' key: Blue=Pushbox, Green=Hurtbox, Red=Hitbox
@@ -1319,7 +1320,7 @@
     shakeIntensity = 9;
 
     gameMode = 'ROUND_END';
-    showBanner('K.O.!', `${winner.data.name.toUpperCase()} TAKES THE ROUND`, 115);
+    showBanner('K.O.!', `${winner.data.name.toUpperCase()} TAKES THE ROUND`, 180); // 3 seconds
     updateHUD();
   }
 
@@ -1336,22 +1337,24 @@
       winner = p2;
     }
     SoundFX.playKO();
-    showBanner('TIME OVER!', winner ? `${winner.data.name.toUpperCase()} WINS ROUND` : 'DRAW ROUND', 115);
+    showBanner('TIME OVER!', winner ? `${winner.data.name.toUpperCase()} WINS ROUND` : 'DRAW ROUND', 180); // 3 seconds
     updateHUD();
   }
 
   function finishRoundTransition() {
     if (p1.roundsWon >= 2 || p2.roundsWon >= 2) {
       const p1Won = p1.roundsWon >= 2;
-      fightBanner.classList.add('hidden');
-      hudEl.classList.add('hidden');
 
       if (!onlineRole) {
         if (p1Won) {
           arcadeScore += 500 + Math.round(p1.health * 5);
           if (arcadeStage < 5) {
-            arcadeStage++;
-            startMatch(p1.data, arcadeOpponents[arcadeStage - 1]);
+            gameMode = 'POST_MATCH_BANNER';
+            showBanner('YOU WIN!', `ADVANCING TO ${arcadeStage + 1 === 5 ? 'FINAL STAGE' : `STAGE ${arcadeStage + 1}`}`, 240);
+            postMatchCallback = () => {
+              arcadeStage++;
+              startMatch(p1.data, arcadeOpponents[arcadeStage - 1]);
+            };
             return;
           }
           OnlineManager.submitHighScore({
@@ -1361,21 +1364,26 @@
             score: arcadeScore + 1000,
             wins: 5
           });
-          standaloneCredits = false;
-          btnCreditsRematch.textContent = 'REMATCH';
-          btnCreditsChange.textContent = 'CHANGE FIGHTER';
-          gameMode = 'VICTORY_CUTSCENE';
-          p1.x = 265;
-          p1.y = STAGE.groundY;
-          p1.facing = 1;
-          p1.state = 'victory';
-          document.getElementById('credits-winner-title').textContent =
-            `${p1.data.name.toUpperCase()} WINS!`;
-          const roll = document.getElementById('credits-roll');
-          roll.style.animation = 'none';
-          void roll.offsetWidth;
-          roll.style.animation = '';
-          showOnlyScreen(creditsCutscene);
+          gameMode = 'POST_MATCH_BANNER';
+          showBanner('YOU WIN!', 'TOURNAMENT CHAMPION!', 240);
+          postMatchCallback = () => {
+            hudEl.classList.add('hidden');
+            standaloneCredits = false;
+            btnCreditsRematch.textContent = 'REMATCH';
+            btnCreditsChange.textContent = 'CHANGE FIGHTER';
+            gameMode = 'VICTORY_CUTSCENE';
+            p1.x = 265;
+            p1.y = STAGE.groundY;
+            p1.facing = 1;
+            p1.state = 'victory';
+            document.getElementById('credits-winner-title').textContent =
+              `${p1.data.name.toUpperCase()} WINS!`;
+            const roll = document.getElementById('credits-roll');
+            roll.style.animation = 'none';
+            void roll.offsetWidth;
+            roll.style.animation = '';
+            showOnlyScreen(creditsCutscene);
+          };
         } else {
           if (arcadeScore > 0) {
             OnlineManager.submitHighScore({
@@ -1386,13 +1394,18 @@
               wins: arcadeStage - 1
             });
           }
-          showMatchEndScreen(
-            'GAME OVER',
-            `${p2.data.name} (Beast: ${p2.data.beastName}) defeated you on ${arcadeStage === 5 ? 'Final Stage' : `Stage ${arcadeStage}`}!`
-          );
+          gameMode = 'POST_MATCH_BANNER';
+          showBanner('YOU LOSE!', `${p2.data.name.toUpperCase()} TAKES THE MATCH`, 240);
+          postMatchCallback = () => {
+            hudEl.classList.add('hidden');
+            showMatchEndScreen(
+              'GAME OVER',
+              `${p2.data.name} (Beast: ${p2.data.beastName}) defeated you on ${arcadeStage === 5 ? 'Final Stage' : `Stage ${arcadeStage}`}!`
+            );
+          };
         }
       } else {
-        // Online Match End: broadcast to Guest and show Win/Lose screen on Host
+        // Online Match End: broadcast to Guest and show 4s YOU WIN! / YOU LOSE! banner
         const payload = {
           p1RoundsWon: p1.roundsWon,
           p2RoundsWon: p2.roundsWon,
@@ -1422,9 +1435,6 @@
     const localWon = (localIsP1 && p1Won) || (!localIsP1 && !p1Won);
     const matchScore = (localWon ? 1000 : 250) + Math.round(localFighter.health * 5);
 
-    fightBanner.classList.add('hidden');
-    hudEl.classList.add('hidden');
-
     OnlineManager.submitHighScore({
       playerName,
       fighterId: localFighter.data.id,
@@ -1433,10 +1443,19 @@
       wins: localWon ? 1 : 0
     });
 
-    showMatchEndScreen(
+    gameMode = 'POST_MATCH_BANNER';
+    showBanner(
       localWon ? 'YOU WIN!' : 'YOU LOSE!',
-      `${p1Won ? onlineHostName : onlineGuestName} wins ${p1.roundsWon} - ${p2.roundsWon}! Score saved to Supabase.`
+      `${p1Won ? onlineHostName : onlineGuestName} wins ${p1.roundsWon} - ${p2.roundsWon}!`,
+      240
     );
+    postMatchCallback = () => {
+      hudEl.classList.add('hidden');
+      showMatchEndScreen(
+        localWon ? 'YOU WIN!' : 'YOU LOSE!',
+        `${p1Won ? onlineHostName : onlineGuestName} wins ${p1.roundsWon} - ${p2.roundsWon}! Score saved to Supabase.`
+      );
+    };
   }
 
   function applyPhysics(f) {
@@ -1834,6 +1853,10 @@
         fightBanner.classList.add('hidden');
         if (gameMode === 'ROUND_END' && onlineRole !== 'guest') {
           finishRoundTransition();
+        } else if (gameMode === 'POST_MATCH_BANNER' && postMatchCallback) {
+          const cb = postMatchCallback;
+          postMatchCallback = null;
+          cb();
         }
       }
     }
@@ -1921,7 +1944,15 @@
     }
 
     drawStage();
-    if ((gameMode === 'ROUND_INTRO' || gameMode === 'FIGHT' || gameMode === 'ROUND_END' || gameMode === 'MATCH_END') && p1 && p2) {
+    if (
+      (gameMode === 'ROUND_INTRO' ||
+        gameMode === 'FIGHT' ||
+        gameMode === 'ROUND_END' ||
+        gameMode === 'POST_MATCH_BANNER' ||
+        gameMode === 'MATCH_END') &&
+      p1 &&
+      p2
+    ) {
       drawFighter(ctx, p1, globalTime);
       drawFighter(ctx, p2, globalTime);
       drawDebugBoxes();
