@@ -321,7 +321,7 @@
     fighter.state = 'transform';
     fighter.stateFrame = 0;
     fighter.vx = 0;
-    SoundFX.playTransform();
+    SoundFX.playTransform(fighter.data.id);
     shakeFrames = 15;
     shakeIntensity = 7;
 
@@ -455,6 +455,7 @@
       f.comboQueued = false;
       if (grounded) f.vx *= 0.2;
       SoundFX.playPunch();
+      SoundFX.playAttackVoice(f.data.id, f.isBeast, false);
       return;
     }
 
@@ -464,6 +465,7 @@
       f.hasHitThisAttack = false;
       if (grounded) f.vx *= 0.2;
       SoundFX.playKick();
+      SoundFX.playAttackVoice(f.data.id, f.isBeast, true);
       return;
     }
 
@@ -477,7 +479,7 @@
       // ~30% reduced jump velocity paired with lower gravity for weighty jump arcs
       f.vy = f.data.stats.jumpForce * 0.72;
       f.state = 'jump';
-      SoundFX.playJump();
+      SoundFX.playJump(f.isBeast, f.data.id);
       spawnDust(f.x, STAGE.groundY);
     }
 
@@ -621,6 +623,7 @@
       if (!defender.isBeast) defender.beastGauge = Math.min(100, defender.beastGauge + 10);
 
       SoundFX.playHit(spec.heavy);
+      SoundFX.playHitVoice(defender.data.id, defender.isBeast);
       spawnHitSparks(impactX, impactY, spec.heavy ? '#b81d2c' : '#c99a3b', spec.heavy ? 16 : 9);
       spawnFloatingText(defender.x, defender.y - 118, `-${spec.damage}`, spec.heavy ? '#e04f5f' : '#e6e8ee');
 
