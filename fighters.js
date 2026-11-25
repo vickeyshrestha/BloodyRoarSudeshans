@@ -377,7 +377,7 @@ function drawSpriteFighter(ctx, f, img, globalTime) {
   if (data.id === 'adheesh' && isBeast) sizeMult = 1.2;
   else if (data.id === 'sumit' && isBeast) sizeMult = 0.85;
 
-  const targetH = 225 * sizeMult;
+  const targetH = 260 * sizeMult;
   const aspect = (img.naturalWidth || 100) / (img.naturalHeight || 100);
   const drawH = targetH;
   const drawW = targetH * aspect;
@@ -550,7 +550,7 @@ function drawVectorFighter(ctx, f, globalTime) {
   const data = f.data;
   const pal = data.palette;
   const isBeast = f.isBeast;
-  const scale = data.stats.scale * (isBeast ? 1.08 : 1.0) * 2.65;
+  const scale = data.stats.scale * (isBeast ? 1.08 : 1.0) * 2.05;
   const pose = computePose(f.state, globalTime + f.animOffset, isBeast);
 
   ctx.save();
@@ -1133,7 +1133,7 @@ function drawPortrait(canvas, fighter, isBeast = false) {
 
   // Close-up face & shoulders bust framing for character select & VS screen
   ctx.save();
-  const s = (canvas.width / 127.2) / fighter.stats.scale;
+  const s = (canvas.width / 98.4) / fighter.stats.scale;
   ctx.translate(canvas.width * 0.48, canvas.height * 2.28);
   ctx.scale(s, s);
   drawVectorFighter(ctx, mock, 12);

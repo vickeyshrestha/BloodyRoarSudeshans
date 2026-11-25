@@ -4,6 +4,18 @@
 const SoundFX = (() => {
   let ctx = null;
   let muted = false;
+  let bgm = null;
+  let bgmStarted = false;
+
+  function initBGM() {
+    if (!bgm) {
+      bgm = new Audio('assets/bgm.mp3');
+      bgm.loop = true;
+      bgm.volume = 0.36;
+      bgm.muted = muted;
+    }
+    return bgm;
+  }
 
   function ensureContext() {
     if (muted) return null;
@@ -212,8 +224,23 @@ const SoundFX = (() => {
     isMuted() {
       return muted;
     },
+    startBGM() {
+      const music = initBGM();
+      music.muted = muted;
+      if (!bgmStarted || music.paused) {
+        music.play().then(() => {
+          bgmStarted = true;
+        }).catch(() => {});
+      }
+    },
     toggleMute() {
       muted = !muted;
+      if (bgm) {
+        bgm.muted = muted;
+        if (!muted && bgm.paused && bgmStarted) {
+          bgm.play().catch(() => {});
+        }
+      }
       return muted;
     },
     playMenuSelect() {

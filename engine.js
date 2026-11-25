@@ -257,6 +257,7 @@
   }
 
   function goToStory() {
+    SoundFX.startBGM();
     SoundFX.playMenuConfirm();
     gameMode = 'STORY';
     hudEl.classList.add('hidden');
