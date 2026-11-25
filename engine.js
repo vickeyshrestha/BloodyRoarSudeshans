@@ -113,11 +113,34 @@
       card.className = 'fighter-card' + (idx === selectedIndex ? ' selected' : '');
       card.dataset.index = idx;
 
+      const wrap = document.createElement('div');
+      wrap.className = 'card-portrait-wrap';
+
       const c = document.createElement('canvas');
       c.className = 'card-portrait';
       c.width = 96;
       c.height = 96;
       drawPortrait(c, f, false);
+
+      const beastMini = document.createElement('canvas');
+      beastMini.className = 'card-beast-mini';
+      beastMini.width = 40;
+      beastMini.height = 40;
+      beastMini.title = `Beast: ${f.beastName}`;
+      drawPortrait(beastMini, f, true);
+
+      // Redraw portraits automatically if PNG sprites finish loading after initial render
+      ['human', 'beast'].forEach((form) => {
+        const entry = SPRITE_CACHE[`${f.id}_${form}`];
+        if (entry && !entry.loaded && !entry.error) {
+          entry.img.addEventListener('load', () => {
+            drawPortrait(form === 'human' ? c : beastMini, f, form === 'beast');
+          });
+        }
+      });
+
+      wrap.appendChild(c);
+      wrap.appendChild(beastMini);
 
       const info = document.createElement('div');
       info.className = 'card-info';
@@ -129,7 +152,7 @@
         <div class="stat-row"><span>RNG</span><div class="stat-bar"><div class="stat-bar-fill" style="width:${f.stats.range * 10}%"></div></div></div>
       `;
 
-      card.appendChild(c);
+      card.appendChild(wrap);
       card.appendChild(info);
 
       card.addEventListener('click', () => {
@@ -648,6 +671,9 @@
     winner.roundsWon++;
 
     SoundFX.playKO();
+    spawnDust(loser.x, STAGE.groundY);
+    spawnDust(loser.x - 18, STAGE.groundY);
+    spawnDust(loser.x + 18, STAGE.groundY);
     hitstopFrames = 12;
     shakeFrames = 18;
     shakeIntensity = 9;

@@ -134,6 +134,66 @@ function getFighterById(id) {
   return FIGHTERS.find((f) => f.id === id) || FIGHTERS[0];
 }
 
+// Preload 12 PNG sprites from assets/sprites/ (<id>_human.png and <id>_beast.png)
+const SPRITE_CACHE = {};
+
+function preloadAllSprites() {
+  FIGHTERS.forEach((f) => {
+    ['human', 'beast'].forEach((form) => {
+      const key = `${f.id}_${form}`;
+      const img = new Image();
+      const entry = { img, loaded: false, error: false };
+      img.onload = () => {
+        if (img.naturalWidth > 0) entry.loaded = true;
+        else entry.error = true;
+      };
+      img.onerror = () => {
+        entry.error = true;
+      };
+      img.src = `assets/sprites/${key}.png`;
+      SPRITE_CACHE[key] = entry;
+    });
+  });
+}
+
+preloadAllSprites();
+
+function getFighterSprite(id, isBeast) {
+  const key = `${id}_${isBeast ? 'beast' : 'human'}`;
+  const entry = SPRITE_CACHE[key];
+  if (entry && entry.loaded && !entry.error && entry.img.naturalWidth > 0) {
+    return entry.img;
+  }
+  return null;
+}
+
+// Offscreen scratch canvas for clean hitstun / transform tinting
+let tintCanvas = null;
+let tintCtx = null;
+
+function getTintedSprite(img, w, h, color, alpha) {
+  if (!tintCanvas) {
+    tintCanvas = document.createElement('canvas');
+    tintCtx = tintCanvas.getContext('2d');
+  }
+  const cw = Math.max(1, Math.ceil(w));
+  const ch = Math.max(1, Math.ceil(h));
+  if (tintCanvas.width !== cw || tintCanvas.height !== ch) {
+    tintCanvas.width = cw;
+    tintCanvas.height = ch;
+  }
+  tintCtx.clearRect(0, 0, cw, ch);
+  tintCtx.globalCompositeOperation = 'source-over';
+  tintCtx.drawImage(img, 0, 0, cw, ch);
+  tintCtx.globalCompositeOperation = 'source-atop';
+  tintCtx.fillStyle = color;
+  tintCtx.globalAlpha = alpha;
+  tintCtx.fillRect(0, 0, cw, ch);
+  tintCtx.globalAlpha = 1;
+  tintCtx.globalCompositeOperation = 'source-over';
+  return tintCanvas;
+}
+
 // Tapered, anatomically shaded limb segment (muscle bulge + rim light + dark ink outline)
 function drawShadedLimb(ctx, x1, y1, x2, y2, wStart, wEnd, lightCol, darkCol, outline = '#090a0f') {
   const dx = x2 - x1;
@@ -286,6 +346,179 @@ function computePose(state, timer, isBeast) {
 }
 
 function drawFighter(ctx, f, globalTime) {
+  const spriteImg = getFighterSprite(f.data.id, f.isBeast);
+  if (spriteImg) {
+    drawSpriteFighter(ctx, f, spriteImg, globalTime);
+    return;
+  }
+  drawVectorFighter(ctx, f, globalTime);
+}
+
+function drawSpriteFighter(ctx, f, img, globalTime) {
+  const data = f.data;
+  const pal = data.palette;
+  const isBeast = f.isBeast;
+  const t = (globalTime + f.animOffset) * 0.1;
+
+  // Proportional scaling: Adheesh Elephant ~20% larger, Sumit Mouse ~15% smaller
+  let sizeMult = data.stats.scale * (isBeast ? 1.06 : 1.0);
+  if (data.id === 'adheesh' && isBeast) sizeMult = 1.2;
+  else if (data.id === 'sumit' && isBeast) sizeMult = 0.85;
+
+  const targetH = 126 * sizeMult;
+  const aspect = (img.naturalWidth || 100) / (img.naturalHeight || 100);
+  const drawH = targetH;
+  const drawW = targetH * aspect;
+
+  // Ground cast shadow
+  ctx.save();
+  ctx.translate(f.x, f.y);
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
+  ctx.beginPath();
+  const shadowW = f.state === 'ko' ? drawH * 0.48 : Math.max(30, drawW * 0.42);
+  ctx.ellipse(0, 2, shadowW, 8, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Ganesha subtle warm spiritual aura in Beast form
+  if (isBeast && data.id === 'dinesh') {
+    const auraR = 66 + Math.sin(globalTime * 0.1) * 4;
+    const grad = ctx.createRadialGradient(0, -drawH * 0.55, 10, 0, -drawH * 0.55, auraR);
+    grad.addColorStop(0, 'rgba(201, 158, 56, 0.34)');
+    grad.addColorStop(1, 'rgba(166, 94, 30, 0)');
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(0, -drawH * 0.55, auraR, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Flip horizontally when facing left (-1)
+  ctx.scale(f.facing, 1);
+
+  // Procedural transform animations
+  let offsetX = 0;
+  let offsetY = 0;
+  let rot = 0;
+  let sx = 1;
+  let sy = 1;
+
+  switch (f.state) {
+    case 'idle':
+      sy = 1 + Math.sin(t) * 0.026;
+      sx = 1 - Math.sin(t) * 0.015;
+      break;
+    case 'walk':
+      offsetY = -Math.abs(Math.sin(t * 2.2)) * 5;
+      rot = 0.07;
+      break;
+    case 'crouch':
+      sy = 0.72;
+      sx = 1.1;
+      rot = 0.08;
+      break;
+    case 'jump':
+      sy = 1.05;
+      sx = 0.96;
+      rot = 0.05;
+      break;
+    case 'punch': {
+      const pProg = Math.min(1, f.stateFrame / 8);
+      offsetX = Math.sin(pProg * Math.PI) * 16;
+      rot = 0.16;
+      sx = 1.05;
+      sy = 0.97;
+      break;
+    }
+    case 'kick': {
+      const kProg = Math.min(1, f.stateFrame / 14);
+      offsetX = Math.sin(kProg * Math.PI) * 20;
+      rot = -0.14;
+      sx = 1.07;
+      sy = 0.96;
+      break;
+    }
+    case 'block':
+      rot = -0.09;
+      sx = 0.96;
+      sy = 0.96;
+      break;
+    case 'hitstun':
+      rot = -0.2;
+      offsetX = -6;
+      break;
+    case 'transform':
+      sy = 1.08 + Math.sin(t * 4) * 0.04;
+      sx = 1.04;
+      break;
+    case 'ko':
+      rot = -Math.PI / 2;
+      offsetY = -12;
+      offsetX = -drawH * 0.35;
+      break;
+    case 'victory':
+      sy = 1 + Math.sin(t * 1.4) * 0.03;
+      break;
+  }
+
+  ctx.save();
+  ctx.translate(offsetX, offsetY);
+  ctx.rotate(rot);
+  ctx.scale(sx, sy);
+
+  // Draw base sprite anchored at feet (0, 0)
+  ctx.drawImage(img, -drawW / 2, -drawH, drawW, drawH);
+
+  // Hitstun red/white flash or Beast Transform white flash
+  if (f.hitFlash > 0) {
+    const tinted = getTintedSprite(img, drawW, drawH, f.hitFlash % 2 === 0 ? '#ffffff' : '#ff2e4c', 0.65);
+    ctx.drawImage(tinted, -drawW / 2, -drawH, drawW, drawH);
+  } else if (f.state === 'transform' && f.stateFrame < 12) {
+    const tinted = getTintedSprite(img, drawW, drawH, '#ffffff', 0.72 * (1 - f.stateFrame / 12));
+    ctx.drawImage(tinted, -drawW / 2, -drawH, drawW, drawH);
+  }
+  ctx.restore();
+
+  // Active Punch / Kick glowing slash arc
+  if (f.state === 'punch' && f.stateFrame >= 6 && f.stateFrame <= 15) {
+    ctx.save();
+    ctx.strokeStyle = pal.accent;
+    ctx.lineWidth = 4;
+    ctx.globalAlpha = 0.8;
+    ctx.beginPath();
+    ctx.arc(drawW * 0.36, -drawH * 0.64, 28, -0.75, 0.75);
+    ctx.stroke();
+    ctx.restore();
+  } else if (f.state === 'kick' && f.stateFrame >= 11 && f.stateFrame <= 22) {
+    ctx.save();
+    ctx.strokeStyle = pal.accent;
+    ctx.lineWidth = 5;
+    ctx.globalAlpha = 0.85;
+    ctx.beginPath();
+    ctx.arc(drawW * 0.32, -drawH * 0.48, 44, -0.9, 0.45);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // Block translucent blue/white shield shimmer
+  if (f.state === 'block') {
+    ctx.save();
+    const shieldGrad = ctx.createRadialGradient(22, -drawH * 0.54, 6, 22, -drawH * 0.54, 42);
+    shieldGrad.addColorStop(0, 'rgba(220, 245, 255, 0.35)');
+    shieldGrad.addColorStop(0.7, 'rgba(94, 168, 201, 0.28)');
+    shieldGrad.addColorStop(1, 'rgba(94, 168, 201, 0)');
+    ctx.fillStyle = shieldGrad;
+    ctx.strokeStyle = 'rgba(180, 235, 255, 0.85)';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.arc(20, -drawH * 0.54, 40, -Math.PI * 0.44, Math.PI * 0.44);
+    ctx.stroke();
+    ctx.fill();
+    ctx.restore();
+  }
+
+  ctx.restore();
+}
+
+function drawVectorFighter(ctx, f, globalTime) {
   const data = f.data;
   const pal = data.palette;
   const isBeast = f.isBeast;
@@ -774,6 +1007,34 @@ function drawPortrait(canvas, fighter, isBeast = false) {
   const ctx = canvas.getContext('2d');
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+  // 1. Prefer _human.png / _beast.png sprite if available
+  const spriteImg = getFighterSprite(fighter.id, isBeast);
+  if (spriteImg) {
+    const grad = ctx.createRadialGradient(
+      canvas.width / 2,
+      canvas.height / 2,
+      6,
+      canvas.width / 2,
+      canvas.height / 2,
+      canvas.width * 0.72
+    );
+    grad.addColorStop(0, fighter.palette.accent + '44');
+    grad.addColorStop(1, '#080a0f');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    const iw = spriteImg.naturalWidth;
+    const ih = spriteImg.naturalHeight;
+    const scale = Math.max(canvas.width / iw, canvas.height / ih) * 1.15;
+    const dw = iw * scale;
+    const dh = ih * scale;
+    const dx = (canvas.width - dw) / 2;
+    const dy = Math.min(4, (canvas.height - dh) * 0.12);
+    ctx.drawImage(spriteImg, dx, dy, dw, dh);
+    return;
+  }
+
+  // 2. Fallback to uploaded photo portrait (e.g. Munna.jpg)
   if (!isBeast && fighter.portraitSrc) {
     let img = portraitImageCache[fighter.portraitSrc];
     if (!img) {
