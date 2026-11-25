@@ -422,18 +422,19 @@ function drawSpriteFighter(ctx, f, img, globalTime) {
       rot = 0.05;
       break;
     case 'punch': {
-      const pProg = Math.min(1, f.stateFrame / 8);
-      offsetX = Math.sin(pProg * Math.PI) * 16;
-      rot = 0.16;
-      sx = 1.05;
-      sy = 0.97;
+      const pProg = Math.min(1, f.stateFrame / 14);
+      offsetX = Math.sin(pProg * Math.PI) * 28;
+      rot = Math.sin(pProg * Math.PI) * 0.22;
+      sx = 1.07;
+      sy = 0.95;
       break;
     }
     case 'kick': {
-      const kProg = Math.min(1, f.stateFrame / 14);
-      offsetX = Math.sin(kProg * Math.PI) * 20;
-      rot = -0.14;
-      sx = 1.07;
+      const kProg = Math.min(1, f.stateFrame / 20);
+      offsetX = Math.sin(kProg * Math.PI) * 32;
+      offsetY = -Math.sin(kProg * Math.PI) * 14;
+      rot = -Math.sin(kProg * Math.PI) * 0.24;
+      sx = 1.08;
       sy = 0.96;
       break;
     }
@@ -478,23 +479,71 @@ function drawSpriteFighter(ctx, f, img, globalTime) {
   }
   ctx.restore();
 
-  // Active Punch / Kick glowing slash arc
-  if (f.state === 'punch' && f.stateFrame >= 6 && f.stateFrame <= 15) {
+  // Real extended Punching Arm / Kicking Leg + Motion FX for PNG Sprites
+  if (f.state === 'punch' && f.stateFrame >= 4 && f.stateFrame <= 18) {
+    const ext = f.stateFrame <= 10 ? (f.stateFrame - 3) / 7 : Math.max(0, 1 - (f.stateFrame - 10) / 8);
+    const armLight = isBeast ? pal.beastLight : pal.skin;
+    const armDark = isBeast ? pal.beastDark : pal.skinShadow;
+    const sx0 = 18 + offsetX * 0.5;
+    const sy0 = -114;
+    const fx1 = sx0 + 76 * ext;
+    const fy1 = sy0 - 4;
+
+    drawShadedLimb(ctx, sx0, sy0, fx1, fy1, 18, 13, armLight, armDark);
+
+    // Taped fist / beast claws
     ctx.save();
-    ctx.strokeStyle = pal.accent;
-    ctx.lineWidth = 4;
-    ctx.globalAlpha = 0.8;
+    ctx.fillStyle = isBeast ? pal.beastDark : pal.accent;
+    ctx.strokeStyle = '#090a0f';
+    ctx.lineWidth = 2.5;
     ctx.beginPath();
-    ctx.arc(38, -78, 30, -0.75, 0.75);
+    ctx.arc(fx1, fy1, isBeast ? 11 : 9.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    // Speed lines & impact arc
+    ctx.strokeStyle = pal.accent;
+    ctx.lineWidth = 3.5;
+    ctx.globalAlpha = 0.85 * ext;
+    ctx.beginPath();
+    ctx.moveTo(sx0 + 10, sy0 - 14);
+    ctx.lineTo(fx1 + 14, fy1 - 10);
+    ctx.moveTo(sx0 + 16, sy0 + 12);
+    ctx.lineTo(fx1 + 12, fy1 + 10);
+    ctx.stroke();
+
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.arc(fx1 - 6, fy1, 24, -0.8, 0.8);
     ctx.stroke();
     ctx.restore();
-  } else if (f.state === 'kick' && f.stateFrame >= 11 && f.stateFrame <= 22) {
+  } else if (f.state === 'kick' && f.stateFrame >= 6 && f.stateFrame <= 26) {
+    const ext = f.stateFrame <= 14 ? (f.stateFrame - 5) / 9 : Math.max(0, 1 - (f.stateFrame - 14) / 12);
+    const legLight = isBeast ? pal.beastMain : pal.pants;
+    const legDark = isBeast ? pal.beastDark : '#0e1017';
+    const hx0 = 14 + offsetX * 0.4;
+    const hy0 = -74 + offsetY * 0.5;
+    const kx1 = hx0 + 92 * ext;
+    const ky1 = hy0 - 38 * ext;
+
+    drawShadedLimb(ctx, hx0, hy0, kx1, ky1, 22, 14, legLight, legDark);
+
+    // Boot / Beast foot
     ctx.save();
+    ctx.fillStyle = isBeast ? pal.beastDark : pal.accent;
+    ctx.strokeStyle = '#090a0f';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.ellipse(kx1, ky1, 13, 8, -0.35, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+
+    // Sweeping crescent kick slash
     ctx.strokeStyle = pal.accent;
     ctx.lineWidth = 5;
-    ctx.globalAlpha = 0.85;
+    ctx.globalAlpha = 0.85 * ext;
     ctx.beginPath();
-    ctx.arc(34, -58, 46, -0.9, 0.45);
+    ctx.arc(hx0 + 24, hy0 - 12, 68 * ext, -0.95, 0.45);
     ctx.stroke();
     ctx.restore();
   }
