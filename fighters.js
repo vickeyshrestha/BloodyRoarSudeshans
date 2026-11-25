@@ -138,7 +138,7 @@ function getFighterById(id) {
 // Preload multi-action PNG sprites from assets/sprites/
 // Actions: '' (idle), '_punch', '_kick' for both 'human' and 'beast' forms
 const SPRITE_CACHE = {};
-const SPRITE_VERSION = '2';
+const SPRITE_VERSION = '3';
 
 function preloadAllSprites() {
   FIGHTERS.forEach((f) => {
