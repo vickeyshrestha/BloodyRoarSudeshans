@@ -110,7 +110,10 @@ const OnlineManager = (() => {
     return room;
   }
 
-  function connectChannel(code, { onGuestJoin, onRemoteInput, onRemoteState, onPeerLeave }) {
+  function connectChannel(
+    code,
+    { onGuestJoin, onRemoteInput, onRemoteState, onRematchRequest, onRematchAccept, onRematchDecline, onPeerLeave }
+  ) {
     const sb = getClient();
     if (!sb) return null;
     disconnectChannel();
@@ -128,6 +131,15 @@ const OnlineManager = (() => {
       })
       .on('broadcast', { event: 'state' }, ({ payload }) => {
         if (onRemoteState) onRemoteState(payload);
+      })
+      .on('broadcast', { event: 'rematch_request' }, ({ payload }) => {
+        if (onRematchRequest) onRematchRequest(payload);
+      })
+      .on('broadcast', { event: 'rematch_accept' }, () => {
+        if (onRematchAccept) onRematchAccept();
+      })
+      .on('broadcast', { event: 'rematch_decline' }, () => {
+        if (onRematchDecline) onRematchDecline();
       })
       .on('broadcast', { event: 'leave' }, () => {
         if (onPeerLeave) onPeerLeave();

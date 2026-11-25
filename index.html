@@ -290,15 +290,22 @@
         </div>
       </div>
 
-      <!-- Victory / Match End Overlay (CPU Wins) -->
+      <!-- Victory / Game Over Overlay -->
       <div id="victory-screen" class="screen-overlay hidden">
         <div class="victory-card">
           <div id="victory-kicker" class="arcade-kicker">MATCH COMPLETE</div>
-          <h2 id="victory-title" class="victory-title">CPU WINS!</h2>
+          <h2 id="victory-title" class="victory-title">GAME OVER</h2>
           <p id="victory-subtitle" class="victory-subtitle">Better luck next time!</p>
-          <div class="victory-actions">
+          <div id="online-rematch-prompt" class="rematch-prompt hidden">
+            <p id="rematch-prompt-text">Opponent wants a REMATCH!</p>
+            <div class="victory-actions">
+              <button id="btn-rematch-accept" class="arcade-btn primary">ACCEPT REMATCH</button>
+              <button id="btn-rematch-decline" class="arcade-btn secondary">DECLINE (MAIN MENU)</button>
+            </div>
+          </div>
+          <div id="victory-actions-default" class="victory-actions">
             <button id="btn-rematch" class="arcade-btn primary">REMATCH</button>
-            <button id="btn-change-fighter" class="arcade-btn secondary">CHANGE FIGHTER</button>
+            <button id="btn-change-fighter" class="arcade-btn secondary">MAIN MENU</button>
           </div>
         </div>
       </div>

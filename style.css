@@ -1256,6 +1256,21 @@ kbd {
   justify-content: center;
 }
 
+.rematch-prompt {
+  margin-bottom: 14px;
+  padding: 12px 16px;
+  background: rgba(184, 29, 44, 0.22);
+  border: 2px solid var(--accent-gold);
+  border-radius: 8px;
+}
+
+.rematch-prompt p {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--accent-gold);
+  margin-bottom: 10px;
+}
+
 /* Trophy Cutscene + Funny Credits Overlay */
 .credits-overlay {
   position: absolute;

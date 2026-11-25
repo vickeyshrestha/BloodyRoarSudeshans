@@ -67,6 +67,11 @@
   const btnAcceptChallenge = document.getElementById('btn-accept-challenge');
   const btnRematch = document.getElementById('btn-rematch');
   const btnChangeFighter = document.getElementById('btn-change-fighter');
+  const onlineRematchPrompt = document.getElementById('online-rematch-prompt');
+  const rematchPromptText = document.getElementById('rematch-prompt-text');
+  const victoryActionsDefault = document.getElementById('victory-actions-default');
+  const btnRematchAccept = document.getElementById('btn-rematch-accept');
+  const btnRematchDecline = document.getElementById('btn-rematch-decline');
   const btnCreditsRematch = document.getElementById('btn-credits-rematch');
   const btnCreditsChange = document.getElementById('btn-credits-change');
   const btnFullscreen = document.getElementById('btn-fullscreen');
@@ -186,13 +191,30 @@
   btnAcceptChallenge.addEventListener('click', acceptBossChallenge);
   btnRematch.addEventListener('click', () => {
     SoundFX.playMenuConfirm();
-    if (onlineRole) goToOnline();
-    else startMatch(p1.data, p2.data);
+    if (onlineRole) {
+      btnRematch.disabled = true;
+      document.getElementById('victory-subtitle').textContent = 'Rematch requested! Waiting for opponent...';
+      OnlineManager.sendBroadcast('rematch_request', { from: playerName });
+    } else {
+      startMatch(p1.data, p2.data);
+    }
   });
   btnChangeFighter.addEventListener('click', () => {
     SoundFX.playMenuSelect();
-    if (onlineRole) goToOnline();
-    else goToSelect();
+    if (onlineRole) {
+      OnlineManager.sendBroadcast('rematch_decline', {});
+    }
+    goToMenu();
+  });
+  btnRematchAccept.addEventListener('click', () => {
+    SoundFX.playMenuConfirm();
+    OnlineManager.sendBroadcast('rematch_accept', {});
+    startMatch(p1.data, p2.data);
+  });
+  btnRematchDecline.addEventListener('click', () => {
+    SoundFX.playMenuSelect();
+    OnlineManager.sendBroadcast('rematch_decline', {});
+    goToMenu();
   });
   btnCreditsRematch.addEventListener('click', () => {
     SoundFX.playMenuConfirm();
@@ -470,7 +492,7 @@
       onlineHostName = playerName;
       onlineStatusEl.textContent = `Room ${code} created! Share code & waiting for opponent...`;
 
-      OnlineManager.connectChannel(code, {
+      const onlineCallbacks = {
         onGuestJoin: (payload) => {
           onlineGuestName = payload.guestName || 'Guest';
           const f1 = getFighterById(fighterId);
@@ -489,12 +511,23 @@
             if (inp.transform) remoteInput.transform = true;
           }
         },
+        onRematchRequest: (payload) => handleIncomingRematchRequest(payload),
+        onRematchAccept: () => {
+          SoundFX.playMenuConfirm();
+          startMatch(p1.data, p2.data);
+        },
+        onRematchDecline: () => {
+          OnlineManager.disconnectChannel();
+          onlineRole = null;
+          goToMenu();
+        },
         onPeerLeave: () => {
           if (gameMode === 'FIGHT' || gameMode === 'ROUND_INTRO') {
-            showBanner('OPPONENT LEFT', 'Returning to lobby...', 90);
+            showBanner('OPPONENT LEFT', 'Returning to menu...', 90);
           }
         }
-      });
+      };
+      OnlineManager.connectChannel(code, onlineCallbacks);
     } catch (err) {
       onlineStatusEl.textContent = `Host error: ${err.message || err}`;
     }
@@ -519,9 +552,19 @@
 
       OnlineManager.connectChannel(code, {
         onRemoteState: (st) => applyRemoteState(st),
+        onRematchRequest: (payload) => handleIncomingRematchRequest(payload),
+        onRematchAccept: () => {
+          SoundFX.playMenuConfirm();
+          startMatch(p1.data, p2.data);
+        },
+        onRematchDecline: () => {
+          OnlineManager.disconnectChannel();
+          onlineRole = null;
+          goToMenu();
+        },
         onPeerLeave: () => {
           if (gameMode === 'FIGHT' || gameMode === 'ROUND_INTRO') {
-            showBanner('HOST DISCONNECTED', 'Returning to lobby...', 90);
+            showBanner('HOST DISCONNECTED', 'Returning to menu...', 90);
           }
         }
       });
@@ -578,6 +621,24 @@
     gameMode = 'SELECT';
     hudEl.classList.add('hidden');
     showOnlyScreen(selectScreen);
+  }
+
+  function handleIncomingRematchRequest(payload) {
+    if (gameMode !== 'MATCH_END') return;
+    const fromName = (payload && payload.from) || 'Opponent';
+    rematchPromptText.textContent = `${fromName} wants a REMATCH!`;
+    onlineRematchPrompt.classList.remove('hidden');
+    victoryActionsDefault.classList.add('hidden');
+  }
+
+  function showMatchEndScreen(title, subtitle) {
+    gameMode = 'MATCH_END';
+    btnRematch.disabled = false;
+    onlineRematchPrompt.classList.add('hidden');
+    victoryActionsDefault.classList.remove('hidden');
+    document.getElementById('victory-title').textContent = title;
+    document.getElementById('victory-subtitle').textContent = subtitle;
+    showOnlyScreen(victoryScreen);
   }
 
   function startMatchFromSelect() {
@@ -1256,11 +1317,10 @@
               wins: arcadeStage - 1
             });
           }
-          gameMode = 'MATCH_END';
-          document.getElementById('victory-title').textContent = 'CPU WINS!';
-          document.getElementById('victory-subtitle').textContent =
-            `${p2.data.name} (Beast: ${p2.data.beastName}) claims victory on ${arcadeStage === 5 ? 'Final Stage' : `Stage ${arcadeStage}`}!`;
-          showOnlyScreen(victoryScreen);
+          showMatchEndScreen(
+            'GAME OVER',
+            `${p2.data.name} (Beast: ${p2.data.beastName}) defeated you on ${arcadeStage === 5 ? 'Final Stage' : `Stage ${arcadeStage}`}!`
+          );
         }
       } else {
         // Online Match End: record score for local player
@@ -1275,11 +1335,10 @@
           score: matchScore,
           wins: localWon ? 1 : 0
         });
-        gameMode = 'MATCH_END';
-        document.getElementById('victory-title').textContent = localWon ? 'YOU WIN ONLINE!' : 'OPPONENT WINS!';
-        document.getElementById('victory-subtitle').textContent =
-          `${p1Won ? onlineHostName : onlineGuestName} wins ${p1.roundsWon} - ${p2.roundsWon}! Score saved to Supabase.`;
-        showOnlyScreen(victoryScreen);
+        showMatchEndScreen(
+          localWon ? 'YOU WIN!' : 'GAME OVER',
+          `${p1Won ? onlineHostName : onlineGuestName} wins ${p1.roundsWon} - ${p2.roundsWon}! Score saved to Supabase.`
+        );
       }
     } else {
       roundNumber++;
