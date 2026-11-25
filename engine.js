@@ -62,6 +62,8 @@
   let roundTimer = 99;
   let timerTicks = 0;
   let bannerTimer = 0;
+  let introPhase = 0; // 0: none, 1: ROUND X flash, 2: FIGHT! flash
+  let introTimer = 0;
   let beastBannerTimer = 0;
   let vsTimer = 0;
   let debugBoxes = false; // Toggle with 'H' key: Blue=Pushbox, Green=Hurtbox, Red=Hitbox
@@ -380,13 +382,18 @@
     starbursts = [];
     roundTimer = 99;
     timerTicks = 0;
-    gameMode = 'FIGHT';
+    gameMode = 'ROUND_INTRO';
+    introPhase = 1;
+    introTimer = 55;
 
     showOnlyScreen(null);
     hudEl.classList.remove('hidden');
     updateHUD();
-    showBanner(`STAGE ${arcadeStage} • ROUND ${roundNumber}`, 'FIGHT!', 75);
-    SoundFX.playRoundStart();
+
+    const roundTitle =
+      roundNumber === 1 ? 'ROUND 1' : roundNumber === 2 ? 'ROUND 2' : 'FINAL ROUND';
+    showBanner(roundTitle, arcadeStage === 3 ? 'CLASS BOSS STAGE' : `STAGE ${arcadeStage} OF 3`, 55);
+    SoundFX.playMenuSelect();
 
     if (arcadeStage === 3 && roundNumber === 1) {
       const bossQuotes = [
@@ -402,7 +409,9 @@
   function showBanner(main, sub = '', duration = 75) {
     fightBannerText.textContent = main;
     fightBannerSub.textContent = sub;
-    fightBanner.classList.remove('hidden');
+    fightBanner.classList.remove('hidden', 'flash');
+    void fightBanner.offsetWidth;
+    fightBanner.classList.add('flash');
     bannerTimer = duration;
   }
 
@@ -1256,7 +1265,22 @@
       }
     }
 
-    if (gameMode === 'FIGHT' || gameMode === 'ROUND_END') {
+    if (gameMode === 'ROUND_INTRO') {
+      introTimer--;
+      if (introTimer <= 0) {
+        if (introPhase === 1) {
+          introPhase = 2;
+          introTimer = 38;
+          showBanner('FIGHT!', '', 38);
+          SoundFX.playRoundStart();
+        } else {
+          introPhase = 0;
+          gameMode = 'FIGHT';
+        }
+      }
+    }
+
+    if (gameMode === 'ROUND_INTRO' || gameMode === 'FIGHT' || gameMode === 'ROUND_END') {
       if (hitstopFrames > 0) {
         hitstopFrames--;
       } else {
@@ -1286,7 +1310,7 @@
     }
 
     drawStage();
-    if ((gameMode === 'FIGHT' || gameMode === 'ROUND_END' || gameMode === 'MATCH_END') && p1 && p2) {
+    if ((gameMode === 'ROUND_INTRO' || gameMode === 'FIGHT' || gameMode === 'ROUND_END' || gameMode === 'MATCH_END') && p1 && p2) {
       drawFighter(ctx, p1, globalTime);
       drawFighter(ctx, p2, globalTime);
       drawDebugBoxes();

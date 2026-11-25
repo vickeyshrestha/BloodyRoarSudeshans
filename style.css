@@ -282,6 +282,69 @@ body {
   animation: pulseGlow 0.45s infinite alternate;
 }
 
+/* Big Flashy Scalable PRESS X Callout */
+.beast-ready-callout {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  padding: 6px 14px;
+  background: linear-gradient(90deg, #ff2e4c 0%, #ff8800 50%, #ffd700 100%);
+  border: 3px solid #000;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  color: #fff;
+  text-shadow: 2px 2px 0 #000;
+  box-shadow: 0 0 22px rgba(255, 200, 40, 0.85), 0 4px 0 #000;
+  transform: skewX(-10deg);
+  animation: beastReadyFlash 0.55s ease-in-out infinite alternate;
+}
+
+.beast-ready-callout kbd {
+  background: #0b0d14;
+  color: #ffd700;
+  border: 2px solid #fff;
+  font-size: 16px;
+  padding: 1px 7px;
+}
+
+.beast-ready-icon {
+  width: 20px;
+  height: 20px;
+  color: #fff8b8;
+  filter: drop-shadow(1px 1px 0 #000);
+}
+
+@keyframes beastReadyFlash {
+  from {
+    transform: skewX(-10deg) scale(1);
+    filter: brightness(1);
+    box-shadow: 0 0 14px rgba(255, 190, 40, 0.7), 0 4px 0 #000;
+  }
+  to {
+    transform: skewX(-10deg) scale(1.1);
+    filter: brightness(1.25);
+    box-shadow: 0 0 28px rgba(255, 70, 70, 0.95), 0 4px 0 #000;
+  }
+}
+
+.fight-banner.flash {
+  animation: bannerFlash 0.32s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes bannerFlash {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) skewX(-8deg) scale(1.9);
+  }
+  100% {
+    opacity: 1;
+    transform: translate(-50%, -50%) skewX(-8deg) scale(1);
+  }
+}
+
 .combo-badge {
   display: inline-block;
   margin-top: 8px;
