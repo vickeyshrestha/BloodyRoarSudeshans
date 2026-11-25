@@ -69,6 +69,7 @@ const FIGHTERS = [
     id: 'sumit',
     name: 'Sumit J Thapa',
     beastName: 'Mouse',
+    portraitSrc: 'assets/Sumit.jpg',
     desc: 'Lean, feral rodent-humanoid with razor claws & blistering evasion.',
     stats: { speed: 10, power: 5, range: 4, health: 90, jumpForce: -14.2, scale: 0.88 },
     palette: {
@@ -112,6 +113,7 @@ const FIGHTERS = [
     id: 'adheesh',
     name: 'Adheesh Bhandari',
     beastName: 'Elephant',
+    portraitSrc: 'assets/Adheesh.jpg',
     desc: 'Towering juggernaut with thick wrinkled hide, ivory tusks & crushing power.',
     stats: { speed: 4, power: 10, range: 9, health: 132, jumpForce: -11.8, scale: 1.16 },
     palette: {
