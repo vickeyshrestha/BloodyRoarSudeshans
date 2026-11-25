@@ -144,7 +144,16 @@ const OnlineManager = (() => {
 
   function connectChannel(
     code,
-    { onGuestJoin, onRemoteInput, onRemoteState, onRematchRequest, onRematchAccept, onRematchDecline, onPeerLeave }
+    {
+      onGuestJoin,
+      onRemoteInput,
+      onRemoteState,
+      onMatchEnd,
+      onRematchRequest,
+      onRematchAccept,
+      onRematchDecline,
+      onPeerLeave
+    }
   ) {
     const sb = getClient();
     if (!sb) return null;
@@ -163,6 +172,9 @@ const OnlineManager = (() => {
       })
       .on('broadcast', { event: 'state' }, ({ payload }) => {
         if (onRemoteState) onRemoteState(payload);
+      })
+      .on('broadcast', { event: 'match_end' }, ({ payload }) => {
+        if (onMatchEnd) onMatchEnd(payload);
       })
       .on('broadcast', { event: 'rematch_request' }, ({ payload }) => {
         if (onRematchRequest) onRematchRequest(payload);

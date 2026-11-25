@@ -568,6 +568,7 @@
 
       OnlineManager.connectChannel(code, {
         onRemoteState: (st) => applyRemoteState(st),
+        onMatchEnd: (payload) => handleOnlineMatchEnd(payload),
         onRematchRequest: (payload) => handleIncomingRematchRequest(payload),
         onRematchAccept: () => {
           SoundFX.playMenuConfirm();
@@ -1339,27 +1340,51 @@
           );
         }
       } else {
-        // Online Match End: record score for local player
-        const localIsP1 = onlineRole === 'host';
-        const localFighter = localIsP1 ? p1 : p2;
-        const localWon = (localIsP1 && p1Won) || (!localIsP1 && !p1Won);
-        const matchScore = (localWon ? 1000 : 250) + Math.round(localFighter.health * 5);
-        OnlineManager.submitHighScore({
-          playerName,
-          fighterId: localFighter.data.id,
-          mode: 'online',
-          score: matchScore,
-          wins: localWon ? 1 : 0
-        });
-        showMatchEndScreen(
-          localWon ? 'YOU WIN!' : 'GAME OVER',
-          `${p1Won ? onlineHostName : onlineGuestName} wins ${p1.roundsWon} - ${p2.roundsWon}! Score saved to Supabase.`
-        );
+        // Online Match End: broadcast to Guest and show Win/Lose screen on Host
+        const payload = {
+          p1RoundsWon: p1.roundsWon,
+          p2RoundsWon: p2.roundsWon,
+          p1Health: p1.health,
+          p2Health: p2.health
+        };
+        OnlineManager.sendBroadcast('match_end', payload);
+        handleOnlineMatchEnd(payload);
       }
     } else {
       roundNumber++;
       startRound();
     }
+  }
+
+  function handleOnlineMatchEnd(payload) {
+    if (!p1 || !p2) return;
+    if (payload) {
+      p1.roundsWon = payload.p1RoundsWon ?? p1.roundsWon;
+      p2.roundsWon = payload.p2RoundsWon ?? p2.roundsWon;
+      p1.health = payload.p1Health ?? p1.health;
+      p2.health = payload.p2Health ?? p2.health;
+    }
+    const p1Won = p1.roundsWon >= 2;
+    const localIsP1 = onlineRole === 'host';
+    const localFighter = localIsP1 ? p1 : p2;
+    const localWon = (localIsP1 && p1Won) || (!localIsP1 && !p1Won);
+    const matchScore = (localWon ? 1000 : 250) + Math.round(localFighter.health * 5);
+
+    fightBanner.classList.add('hidden');
+    hudEl.classList.add('hidden');
+
+    OnlineManager.submitHighScore({
+      playerName,
+      fighterId: localFighter.data.id,
+      mode: 'online',
+      score: matchScore,
+      wins: localWon ? 1 : 0
+    });
+
+    showMatchEndScreen(
+      localWon ? 'YOU WIN!' : 'YOU LOSE!',
+      `${p1Won ? onlineHostName : onlineGuestName} wins ${p1.roundsWon} - ${p2.roundsWon}! Score saved to Supabase.`
+    );
   }
 
   function applyPhysics(f) {
