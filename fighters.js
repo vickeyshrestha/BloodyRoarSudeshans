@@ -135,32 +135,36 @@ function getFighterById(id) {
   return FIGHTERS.find((f) => f.id === id) || FIGHTERS[0];
 }
 
-// Preload 12 PNG sprites from assets/sprites/ (<id>_human.png and <id>_beast.png)
+// Preload multi-action PNG sprites from assets/sprites/
+// Actions: '' (idle), '_punch', '_kick' for both 'human' and 'beast' forms
 const SPRITE_CACHE = {};
+const SPRITE_VERSION = '2';
 
 function preloadAllSprites() {
   FIGHTERS.forEach((f) => {
     ['human', 'beast'].forEach((form) => {
-      const key = `${f.id}_${form}`;
-      const img = new Image();
-      const entry = { img, loaded: false, error: false };
-      img.onload = () => {
-        if (img.naturalWidth > 0) entry.loaded = true;
-        else entry.error = true;
-      };
-      img.onerror = () => {
-        entry.error = true;
-      };
-      img.src = `assets/sprites/${key}.png`;
-      SPRITE_CACHE[key] = entry;
+      ['', '_punch', '_kick'].forEach((action) => {
+        const key = `${f.id}_${form}${action}`;
+        const img = new Image();
+        const entry = { img, loaded: false, error: false };
+        img.onload = () => {
+          if (img.naturalWidth > 0) entry.loaded = true;
+          else entry.error = true;
+        };
+        img.onerror = () => {
+          entry.error = true;
+        };
+        img.src = `assets/sprites/${key}.png?v=${SPRITE_VERSION}`;
+        SPRITE_CACHE[key] = entry;
+      });
     });
   });
 }
 
 preloadAllSprites();
 
-function getFighterSprite(id, isBeast) {
-  const key = `${id}_${isBeast ? 'beast' : 'human'}`;
+function getFighterSprite(id, isBeast, action = '') {
+  const key = `${id}_${isBeast ? 'beast' : 'human'}${action}`;
   const entry = SPRITE_CACHE[key];
   if (entry && entry.loaded && !entry.error && entry.img.naturalWidth > 0) {
     return entry.img;
@@ -347,9 +351,16 @@ function computePose(state, timer, isBeast) {
 }
 
 function drawFighter(ctx, f, globalTime) {
-  const spriteImg = getFighterSprite(f.data.id, f.isBeast);
-  if (spriteImg) {
-    drawSpriteFighter(ctx, f, spriteImg, globalTime);
+  const idleImg = getFighterSprite(f.data.id, f.isBeast, '');
+  if (idleImg) {
+    // Select action sprite during Active & early Recovery phases, with graceful fallback to Idle
+    let activeImg = idleImg;
+    if (f.state === 'punch' && f.stateFrame >= 6 && f.stateFrame < 17) {
+      activeImg = getFighterSprite(f.data.id, f.isBeast, '_punch') || idleImg;
+    } else if (f.state === 'kick' && f.stateFrame >= 10 && f.stateFrame < 25) {
+      activeImg = getFighterSprite(f.data.id, f.isBeast, '_kick') || idleImg;
+    }
+    drawSpriteFighter(ctx, f, activeImg, globalTime);
     return;
   }
   drawVectorFighter(ctx, f, globalTime);
@@ -361,12 +372,12 @@ function drawSpriteFighter(ctx, f, img, globalTime) {
   const isBeast = f.isBeast;
   const t = (globalTime + f.animOffset) * 0.1;
 
-  // Proportional scaling: Adheesh Elephant ~20% larger, Sumit Mouse ~15% smaller
+  // Normalize rendered height (Adheesh Elephant ~20% taller, Sumit Mouse ~15% smaller)
   let sizeMult = data.stats.scale * (isBeast ? 1.06 : 1.0);
   if (data.id === 'adheesh' && isBeast) sizeMult = 1.2;
   else if (data.id === 'sumit' && isBeast) sizeMult = 0.85;
 
-  const targetH = 378 * sizeMult;
+  const targetH = 225 * sizeMult;
   const aspect = (img.naturalWidth || 100) / (img.naturalHeight || 100);
   const drawH = targetH;
   const drawW = targetH * aspect;
@@ -376,26 +387,26 @@ function drawSpriteFighter(ctx, f, img, globalTime) {
   ctx.translate(f.x, f.y);
   ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
   ctx.beginPath();
-  const shadowW = f.state === 'ko' ? 72 : 44 * sizeMult;
+  const shadowW = f.state === 'ko' ? 78 : 48 * sizeMult;
   ctx.ellipse(0, 2, shadowW, 9, 0, 0, Math.PI * 2);
   ctx.fill();
 
   // Ganesha subtle warm spiritual aura in Beast form
   if (isBeast && data.id === 'dinesh') {
-    const auraR = 72 + Math.sin(globalTime * 0.1) * 4;
-    const grad = ctx.createRadialGradient(0, -76, 10, 0, -76, auraR);
-    grad.addColorStop(0, 'rgba(201, 158, 56, 0.34)');
+    const auraR = 84 + Math.sin(globalTime * 0.1) * 5;
+    const grad = ctx.createRadialGradient(0, -drawH * 0.52, 12, 0, -drawH * 0.52, auraR);
+    grad.addColorStop(0, 'rgba(201, 158, 56, 0.32)');
     grad.addColorStop(1, 'rgba(166, 94, 30, 0)');
     ctx.fillStyle = grad;
     ctx.beginPath();
-    ctx.arc(0, -76, auraR, 0, Math.PI * 2);
+    ctx.arc(0, -drawH * 0.52, auraR, 0, Math.PI * 2);
     ctx.fill();
   }
 
   // Flip horizontally when facing left (-1)
   ctx.scale(f.facing, 1);
 
-  // Smooth mathematical squash, stretch, rotation, and translation transforms
+  // Clean 3-phase Street Fighter animation transforms (no overlapping legacy vector limbs)
   let offsetX = 0;
   let offsetY = 0;
   let rot = 0;
@@ -404,115 +415,95 @@ function drawSpriteFighter(ctx, f, img, globalTime) {
   let spriteAlpha = 1;
 
   const deg = Math.PI / 180;
-  const punchStartup = data.id === 'nirbhaya' ? 6 : 8;
+  const punchStartup = 6;
   const punchActive = 6;
-  const punchRecovery = 11;
-
-  const kickStartup = 13;
-  const kickActive = 7;
-  const kickRecovery = 17;
+  const punchRecovery = 10;
+  const kickStartup = 10;
+  const kickActive = 8;
+  const kickRecovery = 14;
 
   switch (f.state) {
     case 'idle':
-      sy = 1 + Math.sin(t) * 0.028;
-      sx = 1 - Math.sin(t) * 0.015;
+      sy = 1 + Math.sin(t) * 0.022;
+      sx = 1 - Math.sin(t) * 0.012;
       break;
     case 'walk':
       offsetY = -Math.abs(Math.sin(t * 2.2)) * 5;
-      rot = 4 * deg;
+      rot = 3.5 * deg;
       break;
     case 'crouch':
-      sy = 0.74;
-      sx = 1.1;
+      sy = 0.76;
+      sx = 1.08;
       offsetY = 4;
       break;
     case 'jump':
-      sy = 1.06;
-      sx = 0.95;
-      rot = 3 * deg;
+      sy = 1.04;
+      sx = 0.96;
+      rot = 2.5 * deg;
       break;
     case 'punch': {
       const fr = f.stateFrame;
       if (fr < punchStartup) {
-        // Pre-attack anticipation: subtle backward lean (-6.5 deg) and -10px wind-up
+        // Startup: Idle sprite with subtle anticipation lean back (-5px X)
         const p = fr / punchStartup;
-        offsetX = -10 * p;
-        rot = -6.5 * deg * p;
-        sx = 1 - 0.04 * p;
-        sy = 1 + 0.03 * p;
+        offsetX = -5 * p;
+        rot = -3 * deg * p;
       } else if (fr < punchStartup + punchActive) {
-        // Active frame: fast forward lunge (+46px), forward lean (+10 deg), +10% scaleX, -5% scaleY
-        const p = Math.min(1, (fr - punchStartup) / 2);
-        offsetX = -10 + 56 * p;
-        rot = (-6.5 + 16.5 * p) * deg;
-        sx = 1.1;
-        sy = 0.95;
+        // Active: _punch.png with crisp forward step (+12px toward opponent)
+        offsetX = 12;
+        rot = 2 * deg;
       } else {
-        // Recovery: smooth ease back to idle
+        // Recovery: brief hold then smooth return to Idle
         const p = Math.min(1, (fr - punchStartup - punchActive) / punchRecovery);
-        const ease = 1 - Math.pow(1 - p, 2);
-        offsetX = 46 * (1 - ease);
-        rot = 10 * deg * (1 - ease);
-        sx = 1.1 - 0.1 * ease;
-        sy = 0.95 + 0.05 * ease;
+        offsetX = 12 * (1 - p);
+        rot = 2 * deg * (1 - p);
       }
       break;
     }
     case 'kick': {
       const fr = f.stateFrame;
       if (fr < kickStartup) {
-        // Pre-attack: deep crouch (-15% scaleY, +5px down) and subtle backward tilt
+        // Startup: Idle sprite with anticipation lean back (-5px X)
         const p = fr / kickStartup;
-        sy = 1 - 0.15 * p;
-        sx = 1 + 0.06 * p;
-        offsetY = 5 * p;
-        rot = -6 * deg * p;
+        offsetX = -5 * p;
+        rot = -4 * deg * p;
+        sy = 1 - 0.04 * p;
       } else if (fr < kickStartup + kickActive) {
-        // Active frame: rapid forward-upward thrust (+40px forward, -15px up, -15 deg back-tilt)
-        const p = Math.min(1, (fr - kickStartup) / 2);
-        offsetX = 40 * p;
-        offsetY = 5 - 20 * p;
-        rot = (-6 - 9 * p) * deg;
-        sx = 1.08;
-        sy = 0.96;
+        // Active: _kick.png with crisp forward step (+12px toward opponent)
+        offsetX = 12;
+        rot = -2 * deg;
       } else {
-        // Recovery: heavy step-down back to idle posture
+        // Recovery: brief hold then smooth return to Idle
         const p = Math.min(1, (fr - kickStartup - kickActive) / kickRecovery);
-        const ease = 1 - Math.pow(1 - p, 2);
-        offsetX = 40 * (1 - ease);
-        offsetY = -15 * (1 - ease);
-        rot = -15 * deg * (1 - ease);
-        sx = 1.08 - 0.08 * ease;
-        sy = 0.96 + 0.04 * ease;
+        offsetX = 12 * (1 - p);
+        rot = -2 * deg * (1 - p);
       }
       break;
     }
     case 'block': {
-      const recoil = f.blockRecoil ? f.blockRecoil * 1.2 : 0;
+      const recoil = f.blockRecoil ? f.blockRecoil * 1.1 : 0;
       offsetX = -recoil;
-      rot = -5.5 * deg;
-      sx = 0.96;
-      sy = 0.96;
+      rot = -4 * deg;
+      sx = 0.97;
+      sy = 0.97;
       break;
     }
     case 'hitstun':
       offsetX = Math.sin(globalTime * 2.2) * 5 - 5;
-      rot = -11 * deg;
-      sx = 0.97;
-      sy = 0.97;
+      rot = -8 * deg;
       break;
     case 'transform':
-      sy = 1.08 + Math.sin(t * 4) * 0.04;
+      sy = 1.06 + Math.sin(t * 4) * 0.03;
       sx = 1.04;
       break;
     case 'ko':
       rot = -Math.PI / 2;
       offsetY = -14;
-      offsetX = -56;
+      offsetX = -drawH * 0.35;
       spriteAlpha = 0.82;
       break;
     case 'victory':
-      sy = 1 + Math.sin(t * 1.4) * 0.03;
+      sy = 1 + Math.sin(t * 1.4) * 0.025;
       break;
   }
 
@@ -522,12 +513,12 @@ function drawSpriteFighter(ctx, f, img, globalTime) {
   ctx.rotate(rot);
   ctx.scale(sx, sy);
 
-  // Draw base PNG sprite anchored at feet (0, 0)
+  // Draw base PNG sprite anchored at bottom-center (feet on floor: 0, 0)
   ctx.drawImage(img, -drawW / 2, -drawH, drawW, drawH);
 
-  // Hitstun dark/red flash or Beast Transform white flash
+  // Hitstun red/dark flash or Beast Transform white flash
   if (f.hitFlash > 0) {
-    const tinted = getTintedSprite(img, drawW, drawH, f.hitFlash % 2 === 0 ? '#ff2e4c' : '#550912', 0.62);
+    const tinted = getTintedSprite(img, drawW, drawH, f.hitFlash % 2 === 0 ? '#ff2e4c' : '#550912', 0.6);
     ctx.drawImage(tinted, -drawW / 2, -drawH, drawW, drawH);
   } else if (f.state === 'transform' && f.stateFrame < 12) {
     const tinted = getTintedSprite(img, drawW, drawH, '#ffffff', 0.72 * (1 - f.stateFrame / 12));
@@ -535,69 +526,18 @@ function drawSpriteFighter(ctx, f, img, globalTime) {
   }
   ctx.restore();
 
-  // Procedural Swipe & Strike Arcs (defining Punch & Kick ranges cleanly)
-  if (f.state === 'punch' && f.stateFrame >= punchStartup && f.stateFrame <= punchStartup + punchActive + 5) {
-    const pLife = 1 - (f.stateFrame - punchStartup) / (punchActive + 6);
-    ctx.save();
-    ctx.globalAlpha = Math.max(0, pLife * 0.9);
-    const slashGrad = ctx.createLinearGradient(30, -96, 118, -76);
-    slashGrad.addColorStop(0, 'rgba(255, 255, 255, 0)');
-    slashGrad.addColorStop(0.6, 'rgba(255, 255, 255, 0.92)');
-    slashGrad.addColorStop(1, pal.accent);
-
-    ctx.fillStyle = slashGrad;
-    ctx.beginPath();
-    ctx.moveTo(34, -104);
-    ctx.quadraticCurveTo(116, -92, 122, -78);
-    ctx.quadraticCurveTo(106, -68, 34, -76);
-    ctx.quadraticCurveTo(86, -86, 34, -104);
-    ctx.closePath();
-    ctx.fill();
-
-    ctx.strokeStyle = '#ffffff';
-    ctx.lineWidth = 2.5;
-    ctx.beginPath();
-    ctx.arc(46, -86, 62, -0.45, 0.4);
-    ctx.stroke();
-    ctx.restore();
-  } else if (f.state === 'kick' && f.stateFrame >= kickStartup && f.stateFrame <= kickStartup + kickActive + 7) {
-    const kLife = 1 - (f.stateFrame - kickStartup) / (kickActive + 8);
-    ctx.save();
-    ctx.globalAlpha = Math.max(0, kLife * 0.92);
-    const kickGrad = ctx.createLinearGradient(20, -125, 132, -40);
-    kickGrad.addColorStop(0, 'rgba(255, 255, 255, 0)');
-    kickGrad.addColorStop(0.55, pal.accent);
-    kickGrad.addColorStop(1, '#ffffff');
-
-    ctx.fillStyle = kickGrad;
-    ctx.beginPath();
-    ctx.moveTo(22, -130);
-    ctx.quadraticCurveTo(138, -106, 134, -46);
-    ctx.quadraticCurveTo(92, -32, 26, -48);
-    ctx.quadraticCurveTo(102, -68, 22, -130);
-    ctx.closePath();
-    ctx.fill();
-
-    ctx.strokeStyle = '#ffffff';
-    ctx.lineWidth = 3.5;
-    ctx.beginPath();
-    ctx.arc(36, -78, 86, -0.85, 0.45);
-    ctx.stroke();
-    ctx.restore();
-  }
-
   // Block translucent blue/white shield shimmer
   if (f.state === 'block') {
     ctx.save();
-    const shieldGrad = ctx.createRadialGradient(24, -72, 6, 24, -72, 46);
-    shieldGrad.addColorStop(0, 'rgba(220, 245, 255, 0.38)');
-    shieldGrad.addColorStop(0.7, 'rgba(94, 168, 201, 0.3)');
+    const shieldGrad = ctx.createRadialGradient(30, -drawH * 0.52, 8, 30, -drawH * 0.52, 54);
+    shieldGrad.addColorStop(0, 'rgba(220, 245, 255, 0.36)');
+    shieldGrad.addColorStop(0.7, 'rgba(94, 168, 201, 0.28)');
     shieldGrad.addColorStop(1, 'rgba(94, 168, 201, 0)');
     ctx.fillStyle = shieldGrad;
-    ctx.strokeStyle = 'rgba(180, 235, 255, 0.9)';
+    ctx.strokeStyle = 'rgba(180, 235, 255, 0.88)';
     ctx.lineWidth = 3;
     ctx.beginPath();
-    ctx.arc(22, -72, 44, -Math.PI * 0.44, Math.PI * 0.44);
+    ctx.arc(26, -drawH * 0.52, 50, -Math.PI * 0.44, Math.PI * 0.44);
     ctx.stroke();
     ctx.fill();
     ctx.restore();
@@ -1095,7 +1035,34 @@ function drawPortrait(canvas, fighter, isBeast = false) {
   const ctx = canvas.getContext('2d');
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  // 1. Prefer real photo portrait (Munna.jpg / Vickey.jpg) for Human Character Select
+  // 1. Prefer newly updated _human.png / _beast.png sprite on Character Select
+  const spriteImg = getFighterSprite(fighter.id, isBeast, '');
+  if (spriteImg) {
+    const grad = ctx.createRadialGradient(
+      canvas.width / 2,
+      canvas.height / 2,
+      6,
+      canvas.width / 2,
+      canvas.height / 2,
+      canvas.width * 0.72
+    );
+    grad.addColorStop(0, fighter.palette.accent + '44');
+    grad.addColorStop(1, '#080a0f');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    const iw = spriteImg.naturalWidth;
+    const ih = spriteImg.naturalHeight;
+    const scale = Math.max(canvas.width / iw, canvas.height / ih) * 1.45;
+    const dw = iw * scale;
+    const dh = ih * scale;
+    const dx = (canvas.width - dw) / 2;
+    const dy = Math.min(4, (canvas.height - dh) * 0.08);
+    ctx.drawImage(spriteImg, dx, dy, dw, dh);
+    return;
+  }
+
+  // 2. Fallback to uploaded photo portrait if sprite is not yet added
   if (!isBeast && fighter.portraitSrc) {
     let img = portraitImageCache[fighter.portraitSrc];
     if (!img) {
@@ -1136,33 +1103,6 @@ function drawPortrait(canvas, fighter, isBeast = false) {
     } else {
       img.addEventListener('load', renderPhoto);
     }
-    return;
-  }
-
-  // 2. Otherwise use _human.png / _beast.png sprite if available
-  const spriteImg = getFighterSprite(fighter.id, isBeast);
-  if (spriteImg) {
-    const grad = ctx.createRadialGradient(
-      canvas.width / 2,
-      canvas.height / 2,
-      6,
-      canvas.width / 2,
-      canvas.height / 2,
-      canvas.width * 0.72
-    );
-    grad.addColorStop(0, fighter.palette.accent + '44');
-    grad.addColorStop(1, '#080a0f');
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    const iw = spriteImg.naturalWidth;
-    const ih = spriteImg.naturalHeight;
-    const scale = Math.max(canvas.width / iw, canvas.height / ih) * 1.15;
-    const dw = iw * scale;
-    const dh = ih * scale;
-    const dx = (canvas.width - dw) / 2;
-    const dy = Math.min(4, (canvas.height - dh) * 0.12);
-    ctx.drawImage(spriteImg, dx, dy, dw, dh);
     return;
   }
 

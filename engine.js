@@ -59,6 +59,7 @@
   let bannerTimer = 0;
   let beastBannerTimer = 0;
   let vsTimer = 0;
+  let debugBoxes = false; // Toggle with 'H' key: Blue=Pushbox, Green=Hurtbox, Red=Hitbox
 
   let p1 = null;
   let p2 = null;
@@ -83,6 +84,7 @@
     }
     if (!keysHeld.has(code)) {
       keysJustPressed.add(code);
+      if (code === 'KeyH') debugBoxes = !debugBoxes;
     }
     keysHeld.add(code);
 
@@ -377,7 +379,9 @@
     beastBannerTimer = 78;
   }
 
-  // Deliberate, Weighty Attack Frame Data (~30-35% slower with clear startup & recovery)
+  // 3-Phase Street Fighter Attack Frame Data
+  // Punch: Startup 6 -> Active 6 -> Recovery 10
+  // Kick:  Startup 10 -> Active 8 -> Recovery 14
   function getAttackSpec(fighter, type) {
     const pwr = fighter.data.stats.power;
     const rng = fighter.data.stats.range;
@@ -385,24 +389,24 @@
 
     if (type === 'punch') {
       return {
-        startup: fighter.data.id === 'nirbhaya' ? 6 : 8,
+        startup: 6,
         active: 6,
-        recovery: 11,
+        recovery: 10,
         damage: Math.round((5 + pwr * 0.55) * beastMult),
-        range: 56 + rng * 3.5,
-        height: 48,
-        knockback: 4.2,
+        range: 64 + rng * 4.5,
+        height: 54,
+        knockback: 4.5,
         hitstun: 16,
         heavy: false
       };
     }
     return {
-      startup: 13,
-      active: 7,
-      recovery: 17,
+      startup: 10,
+      active: 8,
+      recovery: 14,
       damage: Math.round((9 + pwr * 0.95) * beastMult),
-      range: 70 + rng * 4.5,
-      height: 54,
+      range: 82 + rng * 5.2,
+      height: 64,
       knockback: fighter.data.id === 'munna' ? 10.5 : 8.0,
       hitstun: 24,
       heavy: true
@@ -670,30 +674,57 @@
     return out;
   }
 
+  // Street Fighter Pushbox, Hurtbox, and Active Attack Hitbox
+  function getFighterScale(f) {
+    let s = f.data.stats.scale * (f.isBeast ? 1.06 : 1.0);
+    if (f.data.id === 'adheesh' && f.isBeast) s = 1.2;
+    else if (f.data.id === 'sumit' && f.isBeast) s = 0.85;
+    return s;
+  }
+
+  function getPushbox(f) {
+    const s = getFighterScale(f);
+    const w = 48 * s;
+    const h = 155 * s;
+    return { x: f.x - w / 2, y: f.y - h, w, h };
+  }
+
+  function getHurtbox(f) {
+    const s = getFighterScale(f);
+    const w = 68 * s;
+    const h = (f.state === 'crouch' ? 120 : 192) * s;
+    return { x: f.x - w / 2, y: f.y - h, w, h };
+  }
+
+  function getActiveHitbox(f) {
+    if (f.state !== 'punch' && f.state !== 'kick') return null;
+    const spec = getAttackSpec(f, f.state);
+    if (f.stateFrame < spec.startup || f.stateFrame >= spec.startup + spec.active) {
+      return null;
+    }
+    const s = getFighterScale(f);
+    const w = spec.range;
+    const h = spec.height;
+    const x = f.facing === 1 ? f.x + 20 * s : f.x - 20 * s - w;
+    const y = f.state === 'kick' ? f.y - 142 * s : f.y - 166 * s;
+    return { x, y, w, h };
+  }
+
+  function boxesIntersect(a, b) {
+    if (!a || !b) return false;
+    return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+  }
+
   function checkAttackHit(attacker, defender, spec) {
     if (defender.state === 'ko') return;
 
-    const hitX = attacker.facing === 1 ? attacker.x + 12 : attacker.x - 12 - spec.range;
-    const hitY = attacker.y - (attacker.state === 'kick' ? 80 : 92);
-    const hitW = spec.range;
-    const hitH = spec.height;
-
-    const defH = defender.state === 'crouch' ? 68 : 112 * defender.data.stats.scale;
-    const defW = 46 * defender.data.stats.scale;
-    const defX = defender.x - defW / 2;
-    const defY = defender.y - defH;
-
-    const overlap =
-      hitX < defX + defW &&
-      hitX + hitW > defX &&
-      hitY < defY + defH &&
-      hitY + hitH > defY;
-
-    if (!overlap) return;
+    const hitbox = getActiveHitbox(attacker);
+    const hurtbox = getHurtbox(defender);
+    if (!boxesIntersect(hitbox, hurtbox)) return;
 
     attacker.hasHitThisAttack = true;
-    const impactX = (attacker.x + defender.x) / 2;
-    const impactY = defender.y - 72;
+    const impactX = Math.max(hurtbox.x, Math.min(hurtbox.x + hurtbox.w, hitbox.x + (attacker.facing === 1 ? hitbox.w * 0.75 : hitbox.w * 0.25)));
+    const impactY = hitbox.y + hitbox.h * 0.5;
 
     if (defender.state === 'block') {
       const chipDmg = Math.max(1, Math.round(spec.damage * 0.25));
@@ -711,8 +742,8 @@
         color: '#bfefff',
         alpha: 0.95
       });
-      spawnFloatingText(defender.x, defender.y - 120, 'BLOCK!', '#5ea8c9');
-      hitstopFrames = 3;
+      spawnFloatingText(defender.x, defender.y - 150, 'BLOCK!', '#5ea8c9');
+      hitstopFrames = 4;
     } else {
       defender.health = Math.max(0, defender.health - spec.damage);
       defender.state = 'hitstun';
@@ -738,10 +769,10 @@
         maxLife: spec.heavy ? 10 : 7,
         angle: Math.random() * Math.PI
       });
-      spawnFloatingText(defender.x, defender.y - 118, `-${spec.damage}`, spec.heavy ? '#e04f5f' : '#e6e8ee');
+      spawnFloatingText(defender.x, defender.y - 148, `-${spec.damage}`, spec.heavy ? '#e04f5f' : '#e6e8ee');
 
-      // Weightier hitstop on heavy strikes
-      hitstopFrames = spec.heavy ? 8 : 3;
+      // 4-6 frames hitstop on hit
+      hitstopFrames = spec.heavy ? 6 : 4;
       if (spec.heavy) {
         shakeFrames = 8;
         shakeIntensity = 5;
@@ -863,15 +894,49 @@
 
   function resolvePushbox() {
     if (p1.state === 'ko' || p2.state === 'ko') return;
-    const minDist = 48;
+    const b1 = getPushbox(p1);
+    const b2 = getPushbox(p2);
+    if (!boxesIntersect(b1, b2)) return;
+
+    const minDist = (b1.w + b2.w) / 2;
     const dx = p2.x - p1.x;
-    const verticalClose = Math.abs(p1.y - p2.y) < 75;
-    if (verticalClose && Math.abs(dx) < minDist) {
-      const push = (minDist - Math.abs(dx)) / 2;
-      const dir = dx >= 0 ? 1 : -1;
-      p1.x = Math.max(STAGE.leftBound, p1.x - dir * push);
-      p2.x = Math.min(STAGE.rightBound, p2.x + dir * push);
-    }
+    const push = (minDist - Math.abs(dx)) / 2;
+    const dir = dx >= 0 ? 1 : -1;
+    p1.x = Math.max(STAGE.leftBound, p1.x - dir * push);
+    p2.x = Math.min(STAGE.rightBound, p2.x + dir * push);
+  }
+
+  function drawDebugBoxes() {
+    if (!debugBoxes || !p1 || !p2) return;
+    [p1, p2].forEach((f) => {
+      const push = getPushbox(f);
+      const hurt = getHurtbox(f);
+      const hit = getActiveHitbox(f);
+
+      ctx.save();
+      ctx.lineWidth = 2;
+
+      // Green = Hurtbox
+      ctx.strokeStyle = 'rgba(50, 230, 110, 0.9)';
+      ctx.fillStyle = 'rgba(50, 230, 110, 0.14)';
+      ctx.fillRect(hurt.x, hurt.y, hurt.w, hurt.h);
+      ctx.strokeRect(hurt.x, hurt.y, hurt.w, hurt.h);
+
+      // Blue = Pushbox
+      ctx.strokeStyle = 'rgba(40, 150, 255, 0.95)';
+      ctx.fillStyle = 'rgba(40, 150, 255, 0.16)';
+      ctx.fillRect(push.x, push.y, push.w, push.h);
+      ctx.strokeRect(push.x, push.y, push.w, push.h);
+
+      // Red = Active Hitbox
+      if (hit) {
+        ctx.strokeStyle = 'rgba(255, 45, 70, 0.95)';
+        ctx.fillStyle = 'rgba(255, 45, 70, 0.28)';
+        ctx.fillRect(hit.x, hit.y, hit.w, hit.h);
+        ctx.strokeRect(hit.x, hit.y, hit.w, hit.h);
+      }
+      ctx.restore();
+    });
   }
 
   function spawnHitSparks(x, y, color, count) {
@@ -1167,6 +1232,7 @@
     if ((gameMode === 'FIGHT' || gameMode === 'ROUND_END' || gameMode === 'MATCH_END') && p1 && p2) {
       drawFighter(ctx, p1, globalTime);
       drawFighter(ctx, p2, globalTime);
+      drawDebugBoxes();
       renderEffects();
     } else if (gameMode === 'VICTORY_CUTSCENE' && p1) {
       drawTrophyCutscene(ctx, p1, globalTime);
