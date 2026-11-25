@@ -523,7 +523,7 @@ function drawVectorFighter(ctx, f, globalTime) {
   const data = f.data;
   const pal = data.palette;
   const isBeast = f.isBeast;
-  const scale = data.stats.scale * (isBeast ? 1.08 : 1.0);
+  const scale = data.stats.scale * (isBeast ? 1.08 : 1.0) * 1.85;
   const pose = computePose(f.state, globalTime + f.animOffset, isBeast);
 
   ctx.save();
@@ -1106,9 +1106,9 @@ function drawPortrait(canvas, fighter, isBeast = false) {
 
   // Close-up face & shoulders bust framing for character select & VS screen
   ctx.save();
-  const s = (canvas.width / 48) / fighter.stats.scale;
+  const s = (canvas.width / 88.8) / fighter.stats.scale;
   ctx.translate(canvas.width * 0.48, canvas.height * 2.28);
   ctx.scale(s, s);
-  drawFighter(ctx, mock, 12);
+  drawVectorFighter(ctx, mock, 12);
   ctx.restore();
 }
