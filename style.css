@@ -998,6 +998,67 @@ kbd {
   text-shadow: 4px 4px 0 #000, 0 0 24px rgba(255, 46, 76, 0.8);
 }
 
+/* Final Boss Challenge Screen */
+#boss-challenge-screen {
+  background: radial-gradient(circle at center, rgba(64, 10, 18, 0.95), rgba(6, 7, 10, 0.98));
+}
+
+.boss-challenge-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  max-width: 560px;
+  background: rgba(12, 13, 20, 0.94);
+  border: 4px solid var(--accent-red);
+  border-top-color: var(--accent-gold);
+  border-radius: 14px;
+  padding: 22px 32px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.9), 0 0 40px rgba(184, 29, 44, 0.45);
+  animation: storyFadeIn 0.35s ease-out;
+}
+
+.boss-kicker {
+  color: var(--accent-gold);
+}
+
+.boss-challenge-title {
+  font-size: 28px;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  color: #fff;
+  text-shadow: 3px 3px 0 #000, 0 0 18px rgba(255, 46, 76, 0.7);
+  margin-bottom: 12px;
+}
+
+.boss-portrait {
+  border: 3px solid var(--accent-gold);
+  border-radius: 10px;
+  background: #090b12;
+  margin-bottom: 10px;
+}
+
+.boss-challenge-name {
+  font-size: 22px;
+  font-weight: 900;
+  color: var(--accent-gold);
+}
+
+.boss-challenge-beast {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--accent-cyan);
+  margin-bottom: 10px;
+}
+
+.boss-challenge-quote {
+  font-size: 14px;
+  font-style: italic;
+  color: #f0b6bc;
+  margin-bottom: 18px;
+  line-height: 1.45;
+}
+
 /* Victory Screen */
 .victory-card {
   background: rgba(13, 17, 30, 0.94);

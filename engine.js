@@ -22,6 +22,7 @@
   const storyScreen = document.getElementById('story-screen');
   const selectScreen = document.getElementById('select-screen');
   const vsScreen = document.getElementById('vs-screen');
+  const bossChallengeScreen = document.getElementById('boss-challenge-screen');
   const victoryScreen = document.getElementById('victory-screen');
   const creditsCutscene = document.getElementById('credits-cutscene');
 
@@ -42,6 +43,7 @@
   const btnStart = document.getElementById('btn-start');
   const btnStoryContinue = document.getElementById('btn-story-continue');
   const btnConfirmFighter = document.getElementById('btn-confirm-fighter');
+  const btnAcceptChallenge = document.getElementById('btn-accept-challenge');
   const btnRematch = document.getElementById('btn-rematch');
   const btnChangeFighter = document.getElementById('btn-change-fighter');
   const btnCreditsRematch = document.getElementById('btn-credits-rematch');
@@ -103,6 +105,8 @@
       handleSelectKey(code);
     } else if (gameMode === 'VS' && (code === 'Enter' || code === 'Space')) {
       vsTimer = 1;
+    } else if (gameMode === 'BOSS_INTRO' && (code === 'Enter' || code === 'Space')) {
+      acceptBossChallenge();
     }
   });
 
@@ -114,6 +118,7 @@
   btnStart.addEventListener('click', goToStory);
   btnStoryContinue.addEventListener('click', goToSelect);
   btnConfirmFighter.addEventListener('click', startMatchFromSelect);
+  btnAcceptChallenge.addEventListener('click', acceptBossChallenge);
   btnRematch.addEventListener('click', () => {
     SoundFX.playMenuConfirm();
     startMatch(p1.data, p2.data);
@@ -259,8 +264,28 @@
   }
 
   function showOnlyScreen(screen) {
-    [titleScreen, storyScreen, selectScreen, vsScreen, victoryScreen, creditsCutscene].forEach((el) => el.classList.add('hidden'));
+    [titleScreen, storyScreen, selectScreen, vsScreen, bossChallengeScreen, victoryScreen, creditsCutscene].forEach((el) => el.classList.add('hidden'));
     if (screen) screen.classList.remove('hidden');
+  }
+
+  function showBossChallenge() {
+    gameMode = 'BOSS_INTRO';
+    const bossQuotes = [
+      '"I coded this game, so I definitely rigged my own hitboxes!"',
+      '"Still undefeated since 2004 canteen lunch. Prepare to get clawed!"',
+      '"You beat the others... now face the Creator, Director & Stunt Double!"'
+    ];
+    document.getElementById('boss-challenge-quote').textContent =
+      bossQuotes[Math.floor(Math.random() * bossQuotes.length)];
+    drawPortrait(document.getElementById('boss-challenge-canvas'), p2.data, true);
+    hudEl.classList.add('hidden');
+    showOnlyScreen(bossChallengeScreen);
+    SoundFX.playTransform(p2.data.id);
+  }
+
+  function acceptBossChallenge() {
+    SoundFX.playMenuConfirm();
+    startRound();
   }
 
   function goToStory() {
@@ -394,16 +419,6 @@
       roundNumber === 1 ? 'ROUND 1' : roundNumber === 2 ? 'ROUND 2' : 'FINAL ROUND';
     showBanner(roundTitle, arcadeStage === 3 ? 'CLASS BOSS STAGE' : `STAGE ${arcadeStage} OF 3`, 240);
     SoundFX.playMenuSelect();
-
-    if (arcadeStage === 3 && roundNumber === 1) {
-      const bossQuotes = [
-        '"I coded this game, so I definitely rigged my own hitboxes!"',
-        '"Still undefeated since 2004 canteen lunch. Prepare to get clawed!"',
-        '"You beat the others... now face the Creator, Director & Stunt Double!"'
-      ];
-      const q = bossQuotes[Math.floor(Math.random() * bossQuotes.length)];
-      showBossIntroBanner(q);
-    }
   }
 
   function showBanner(main, sub = '', duration = 75) {
@@ -1251,7 +1266,10 @@
 
     if (gameMode === 'VS') {
       vsTimer--;
-      if (vsTimer <= 0) startRound();
+      if (vsTimer <= 0) {
+        if (arcadeStage === 3) showBossChallenge();
+        else startRound();
+      }
     }
 
     if (bannerTimer > 0) {
