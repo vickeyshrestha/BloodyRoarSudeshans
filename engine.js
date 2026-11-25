@@ -56,6 +56,7 @@
   const p2BeastBannerName = document.getElementById('p2-beast-banner-name');
   const p2BeastPortrait = document.getElementById('p2-beast-portrait');
   const creditsEndingVideo = document.getElementById('credits-ending-video');
+  const prologueVideo = document.getElementById('prologue-video');
   const hudScoreBox = document.getElementById('hud-score-box');
   const vsStageBadge = document.getElementById('vs-stage-badge');
 
@@ -470,6 +471,20 @@
         });
       } else {
         creditsEndingVideo.pause();
+      }
+    }
+    if (prologueVideo) {
+      if (screen === storyScreen) {
+        prologueVideo.currentTime = 0;
+        prologueVideo.play().catch(() => {});
+        const crawl = document.getElementById('story-crawl-content');
+        if (crawl) {
+          crawl.style.animation = 'none';
+          void crawl.offsetWidth;
+          crawl.style.animation = '';
+        }
+      } else {
+        prologueVideo.pause();
       }
     }
     updatePauseButtonVisibility();
