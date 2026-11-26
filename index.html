@@ -115,13 +115,18 @@
 
         <!-- Mobile Touch Controls -->
         <div id="touch-controls" class="touch-controls">
-          <div class="touch-dpad">
-            <button type="button" class="touch-btn dpad-up" data-key="ArrowUp" aria-label="Jump">&#9650;</button>
-            <div class="dpad-mid">
-              <button type="button" class="touch-btn dpad-left" data-key="ArrowLeft" aria-label="Move Left">&#9664;</button>
-              <button type="button" class="touch-btn dpad-right" data-key="ArrowRight" aria-label="Move Right">&#9654;</button>
-            </div>
-            <button type="button" class="touch-btn dpad-down" data-key="ArrowDown" aria-label="Crouch">&#9660;</button>
+          <div id="genesis-dpad" class="genesis-dpad" aria-label="8-Direction Pad">
+            <div class="dpad-ring"></div>
+            <div class="dpad-cross"></div>
+            <div class="dpad-pivot"></div>
+            <span class="dpad-ind ind-up" data-dir="up">&#9650;</span>
+            <span class="dpad-ind ind-ur" data-dir="ur">&#9679;</span>
+            <span class="dpad-ind ind-right" data-dir="right">&#9654;</span>
+            <span class="dpad-ind ind-dr" data-dir="dr">&#9679;</span>
+            <span class="dpad-ind ind-down" data-dir="down">&#9660;</span>
+            <span class="dpad-ind ind-dl" data-dir="dl">&#9679;</span>
+            <span class="dpad-ind ind-left" data-dir="left">&#9664;</span>
+            <span class="dpad-ind ind-ul" data-dir="ul">&#9679;</span>
           </div>
           <div class="touch-actions">
             <button type="button" class="touch-btn act-btn act-a" data-key="KeyA"><span>A</span><small>PUNCH</small></button>

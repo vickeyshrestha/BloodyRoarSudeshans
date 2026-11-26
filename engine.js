@@ -430,16 +430,76 @@
     });
   }
 
-  // Mobile Touch Controls Binding (live TouchList sync on iOS/Android so buttons never stick)
+  // Mobile Touch Controls Binding (8-way Sega Genesis D-Pad + TouchList sync)
   const touchControlsEl = document.getElementById('touch-controls');
+  const genesisDpadEl = document.getElementById('genesis-dpad');
+  const dpadIndicators = genesisDpadEl ? Array.from(genesisDpadEl.querySelectorAll('.dpad-ind')) : [];
   const touchBtnMap = new Map();
   document.querySelectorAll('.touch-btn[data-key]').forEach((btn) => {
     touchBtnMap.set(btn.dataset.key, btn);
     btn.addEventListener('contextmenu', (e) => e.preventDefault());
     btn.addEventListener('selectstart', (e) => e.preventDefault());
   });
+  if (genesisDpadEl) {
+    genesisDpadEl.addEventListener('contextmenu', (e) => e.preventDefault());
+    genesisDpadEl.addEventListener('selectstart', (e) => e.preventDefault());
+  }
 
   let activeTouchKeys = new Set();
+
+  function getDpadKeysFromPoint(clientX, clientY) {
+    if (!genesisDpadEl) return [];
+    const rect = genesisDpadEl.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+    const dx = clientX - cx;
+    const dy = clientY - cy;
+    const dist = Math.hypot(dx, dy);
+    if (dist < 10 || dist > rect.width * 0.72) return [];
+    const deg = (Math.atan2(dy, dx) * 180) / Math.PI;
+    const sector = Math.round(deg / 45);
+    switch (sector) {
+      case 0:
+        return ['ArrowRight'];
+      case 1:
+        return ['ArrowRight', 'ArrowDown'];
+      case 2:
+        return ['ArrowDown'];
+      case 3:
+        return ['ArrowLeft', 'ArrowDown'];
+      case 4:
+      case -4:
+        return ['ArrowLeft'];
+      case -3:
+        return ['ArrowLeft', 'ArrowUp'];
+      case -2:
+        return ['ArrowUp'];
+      case -1:
+        return ['ArrowRight', 'ArrowUp'];
+      default:
+        return [];
+    }
+  }
+
+  function updateDpadVisuals(keys) {
+    if (!dpadIndicators.length) return;
+    const up = keys.has('ArrowUp');
+    const down = keys.has('ArrowDown');
+    const left = keys.has('ArrowLeft');
+    const right = keys.has('ArrowRight');
+    const activeDirs = new Set();
+    if (up && right) activeDirs.add('ur');
+    else if (down && right) activeDirs.add('dr');
+    else if (down && left) activeDirs.add('dl');
+    else if (up && left) activeDirs.add('ul');
+    if (up) activeDirs.add('up');
+    if (down) activeDirs.add('down');
+    if (left) activeDirs.add('left');
+    if (right) activeDirs.add('right');
+    dpadIndicators.forEach((el) => {
+      el.classList.toggle('active', activeDirs.has(el.dataset.dir));
+    });
+  }
 
   function applyTouchKeys(nextKeys) {
     for (const code of activeTouchKeys) {
@@ -458,6 +518,7 @@
       }
     }
     activeTouchKeys = nextKeys;
+    updateDpadVisuals(nextKeys);
   }
 
   function clearAllTouchPointers() {
@@ -471,9 +532,13 @@
       for (let i = 0; i < e.touches.length; i++) {
         const t = e.touches[i];
         const el = document.elementFromPoint(t.clientX, t.clientY);
-        const btn = el && el.closest ? el.closest('.touch-btn[data-key]') : null;
-        if (btn && btn.dataset.key) {
-          next.add(btn.dataset.key);
+        if (el && el.closest && el.closest('#genesis-dpad')) {
+          getDpadKeysFromPoint(t.clientX, t.clientY).forEach((k) => next.add(k));
+        } else {
+          const btn = el && el.closest ? el.closest('.touch-btn[data-key]') : null;
+          if (btn && btn.dataset.key) {
+            next.add(btn.dataset.key);
+          }
         }
       }
       applyTouchKeys(next);
@@ -485,31 +550,42 @@
   } else {
     // Desktop / non-touch pointer fallback
     const activeTouchPointers = new Map();
-    const releasePointer = (pointerId) => {
-      const entry = activeTouchPointers.get(pointerId);
-      if (!entry) return;
-      activeTouchPointers.delete(pointerId);
+    const syncPointers = () => {
       const next = new Set();
-      for (const other of activeTouchPointers.values()) next.add(other.code);
+      for (const entry of activeTouchPointers.values()) {
+        if (entry.dpad) {
+          getDpadKeysFromPoint(entry.x, entry.y).forEach((k) => next.add(k));
+        } else if (entry.code) {
+          next.add(entry.code);
+        }
+      }
       applyTouchKeys(next);
     };
+    if (genesisDpadEl) {
+      genesisDpadEl.addEventListener('pointerdown', (e) => {
+        e.preventDefault();
+        activeTouchPointers.set(e.pointerId, { dpad: true, x: e.clientX, y: e.clientY });
+        syncPointers();
+      });
+      genesisDpadEl.addEventListener('pointermove', (e) => {
+        if (activeTouchPointers.has(e.pointerId)) {
+          activeTouchPointers.set(e.pointerId, { dpad: true, x: e.clientX, y: e.clientY });
+          syncPointers();
+        }
+      });
+    }
     touchBtnMap.forEach((btn, code) => {
       btn.addEventListener('pointerdown', (e) => {
         e.preventDefault();
-        activeTouchPointers.set(e.pointerId, { code, btn });
-        const next = new Set(activeTouchKeys);
-        next.add(code);
-        applyTouchKeys(next);
+        activeTouchPointers.set(e.pointerId, { code });
+        syncPointers();
       });
-      const onEnd = (e) => {
-        e.preventDefault();
-        releasePointer(e.pointerId);
-      };
-      btn.addEventListener('pointerup', onEnd);
-      btn.addEventListener('pointercancel', onEnd);
     });
-    window.addEventListener('pointerup', (e) => releasePointer(e.pointerId));
-    window.addEventListener('pointercancel', (e) => releasePointer(e.pointerId));
+    const releasePointer = (e) => {
+      if (activeTouchPointers.delete(e.pointerId)) syncPointers();
+    };
+    window.addEventListener('pointerup', releasePointer);
+    window.addEventListener('pointercancel', releasePointer);
   }
 
   window.addEventListener('blur', () => {
