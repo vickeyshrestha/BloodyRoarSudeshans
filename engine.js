@@ -14,7 +14,7 @@
     gravity: 0.42
   };
 
-  const STAGE_BG_PATHS = Array.from({ length: 10 }, (_, i) => `assets/background${i + 1}.jpg`);
+  const STAGE_BG_PATHS = [1, 2, 4, 5, 6, 7, 8, 9, 10].map((n) => `assets/background${n}.jpg`);
   const STAGE_BG_IMAGES = STAGE_BG_PATHS.map((src) => {
     const img = new Image();
     img.src = src;
