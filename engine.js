@@ -2256,14 +2256,11 @@
     updateHUD();
   }
 
-  // Fixed-timestep 90 FPS simulation so mobile (30Hz/60Hz) and desktop (60Hz/120Hz+) run at identical snappy speed
-  const FIXED_STEP_MS = 1000 / 90;
-  let lastFrameTime = performance.now();
-  let stepAccumulator = 0;
-
-  function stepSimulation() {
+  // Main Loop
+  function loop() {
     if (isPaused) {
       keysJustPressed.clear();
+      requestAnimationFrame(loop);
       return;
     }
     globalTime++;
@@ -2341,7 +2338,7 @@
       } else {
         if (gameMode === 'FIGHT') {
           timerTicks++;
-          if (timerTicks >= 90) {
+          if (timerTicks >= 60) {
             timerTicks = 0;
             roundTimer = Math.max(0, roundTimer - 1);
             if (roundTimer === 0) handleTimeOver();
@@ -2368,19 +2365,6 @@
           });
         }
       }
-    }
-
-    keysJustPressed.clear();
-  }
-
-  function loop(now) {
-    const dt = Math.min(100, Math.max(0, (now || performance.now()) - lastFrameTime));
-    lastFrameTime = now || performance.now();
-    stepAccumulator += dt;
-
-    while (stepAccumulator >= FIXED_STEP_MS) {
-      stepSimulation();
-      stepAccumulator -= FIXED_STEP_MS;
     }
 
     ctx.save();
@@ -2411,6 +2395,7 @@
     }
     ctx.restore();
 
+    keysJustPressed.clear();
     requestAnimationFrame(loop);
   }
 
