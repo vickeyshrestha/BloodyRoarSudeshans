@@ -265,8 +265,12 @@
   function enterMobileFullscreenLandscape() {
     if (!isMobileDevice()) return;
     const target = document.documentElement;
-    const req = target.requestFullscreen || target.webkitRequestFullscreen;
-    if (req && !document.fullscreenElement) {
+    const req =
+      target.requestFullscreen ||
+      target.webkitRequestFullscreen ||
+      target.msRequestFullscreen;
+    const fsEl = document.fullscreenElement || document.webkitFullscreenElement;
+    if (req && !fsEl) {
       Promise.resolve(req.call(target))
         .then(() => {
           if (screen.orientation && screen.orientation.lock) {
@@ -278,6 +282,19 @@
       screen.orientation.lock('landscape').catch(() => {});
     }
   }
+
+  document.addEventListener(
+    'click',
+    (e) => {
+      if (!isMobileDevice()) return;
+      const tag = e.target && e.target.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+      if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+        enterMobileFullscreenLandscape();
+      }
+    },
+    true
+  );
 
   // Button Events
   btnStart.addEventListener('click', () => {
