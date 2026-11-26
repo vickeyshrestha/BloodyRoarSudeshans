@@ -387,10 +387,7 @@ function drawFighter(ctx, f, globalTime) {
         customHeightScale = 0.8;
         hasCustomLowSprite = true;
       }
-    } else if (
-      (f.state === 'punch' && f.stateFrame >= 6 && f.stateFrame < 17) ||
-      (f.state === 'throw' && f.stateFrame >= 4 && f.stateFrame < 16)
-    ) {
+    } else if (f.state === 'punch' && f.stateFrame >= 6 && f.stateFrame < 17) {
       activeImg = getFighterSprite(f.data.id, f.isBeast, '_punch') || idleImg;
     } else if (f.state === 'low_punch') {
       const crouchImg = getFighterSprite(f.data.id, f.isBeast, '_crouch');
@@ -581,22 +578,6 @@ function drawSpriteFighter(
         sy *= 0.72;
         sx *= 1.12;
         offsetY += 6;
-      }
-      break;
-    }
-    case 'throw': {
-      const fr = f.stateFrame;
-      if (fr < 4) {
-        const p = fr / 4;
-        offsetX = -4 * p;
-        rot = -3 * deg * p;
-      } else if (fr < 12) {
-        offsetX = 16;
-        rot = 7 * deg;
-      } else {
-        const p = Math.min(1, (fr - 12) / 12);
-        offsetX = 16 * (1 - p);
-        rot = 7 * deg * (1 - p);
       }
       break;
     }

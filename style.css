@@ -1637,7 +1637,7 @@ kbd {
 
 .touch-actions {
   display: grid;
-  grid-template-columns: repeat(2, 56px);
+  grid-template-columns: repeat(3, 56px);
   gap: 8px;
 }
 
@@ -1660,10 +1660,6 @@ kbd {
 
 .act-x {
   border-color: rgba(255, 46, 76, 0.65);
-}
-
-.act-d {
-  border-color: rgba(160, 120, 255, 0.7);
 }
 
 /* Show touch controls on touch devices or narrow screens */
@@ -1694,11 +1690,11 @@ kbd {
     gap: 28px;
   }
   .touch-actions {
-    grid-template-columns: repeat(2, 48px);
+    grid-template-columns: repeat(3, 46px);
     gap: 6px;
   }
   .act-btn {
-    width: 48px;
+    width: 46px;
     height: 44px;
   }
   .act-btn span {
