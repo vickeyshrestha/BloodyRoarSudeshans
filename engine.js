@@ -1301,7 +1301,12 @@
 
     // Short-range shockwave hit
     const dist = Math.abs(fighter.x - opponent.x);
-    if (dist < 120 && Math.abs(fighter.y - opponent.y) < 90 && opponent.state !== 'ko') {
+    if (
+      dist < 120 &&
+      Math.abs(fighter.y - opponent.y) < 90 &&
+      opponent.state !== 'ko' &&
+      opponent.state !== 'transform'
+    ) {
       const dir = opponent.x >= fighter.x ? 1 : -1;
       opponent.health = Math.max(0, opponent.health - 6);
       opponent.vx = dir * 8.5;
@@ -1323,7 +1328,7 @@
     }
     if (f.state === 'transform') {
       f.stateFrame++;
-      if (f.stateFrame >= 24) f.state = 'idle';
+      if (f.stateFrame >= 120) f.state = 'idle';
       return;
     }
 
@@ -1633,7 +1638,7 @@
   }
 
   function checkAttackHit(attacker, defender, spec) {
-    if (defender.state === 'ko') return;
+    if (defender.state === 'ko' || defender.state === 'transform') return;
 
     const hitbox = getActiveHitbox(attacker);
     const hurtbox = getHurtbox(defender);
@@ -1894,7 +1899,7 @@
       f.trailHealth = Math.max(f.health, f.trailHealth - 0.55);
     }
 
-    if (f.isBeast && gameMode === 'FIGHT') {
+    if (f.isBeast && f.state !== 'transform' && gameMode === 'FIGHT') {
       f.beastGauge = Math.max(0, f.beastGauge - (f.beastDrainRate || 0.1));
       if (f.beastGauge <= 0) {
         f.isBeast = false;

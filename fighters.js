@@ -419,6 +419,14 @@ function drawFighter(ctx, f, globalTime) {
       } else if (f.stateFrame >= 8 && f.stateFrame < 22) {
         activeImg = getFighterSprite(f.data.id, f.isBeast, '_kick') || idleImg;
       }
+    } else if (f.state === 'transform') {
+      const showHuman =
+        f.stateFrame < 36 ||
+        (f.stateFrame < 76 && Math.floor(f.stateFrame / 5) % 2 === 0);
+      activeImg =
+        getFighterSprite(f.data.id, !showHuman, '') ||
+        getFighterSprite(f.data.id, f.isBeast, '') ||
+        idleImg;
     } else if (f.state === 'walk' && Math.floor((f.walkFrame || 0) / 9) % 2 === 1) {
       activeImg = getFighterSprite(f.data.id, f.isBeast, '_walk') || idleImg;
     }
@@ -586,8 +594,8 @@ function drawSpriteFighter(
       rot = -8 * deg;
       break;
     case 'transform':
-      sy = 1.06 + Math.sin(t * 4) * 0.03;
-      sx = 1.04;
+      sy = 1.03 + Math.sin(f.stateFrame * 0.14) * 0.05;
+      sx = 1.02 + Math.cos(f.stateFrame * 0.14) * 0.03;
       break;
     case 'ko':
       rot = -Math.PI / 2;
@@ -613,8 +621,9 @@ function drawSpriteFighter(
   if (f.hitFlash > 0) {
     const tinted = getTintedSprite(img, drawW, drawH, f.hitFlash % 2 === 0 ? '#ff2e4c' : '#550912', 0.6);
     ctx.drawImage(tinted, -drawW / 2, -drawH, drawW, drawH);
-  } else if (f.state === 'transform' && f.stateFrame < 12) {
-    const tinted = getTintedSprite(img, drawW, drawH, '#ffffff', 0.72 * (1 - f.stateFrame / 12));
+  } else if (f.state === 'transform' && f.stateFrame < 100) {
+    const flashPeak = 1 - Math.abs(f.stateFrame - 50) / 50;
+    const tinted = getTintedSprite(img, drawW, drawH, '#ffffff', Math.max(0.12, 0.72 * flashPeak));
     ctx.drawImage(tinted, -drawW / 2, -drawH, drawW, drawH);
   }
   ctx.restore();
