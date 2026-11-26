@@ -258,8 +258,11 @@
     keysHeld.delete(normalizeCode(e));
   });
 
+  const IS_MOBILE_DEVICE =
+    window.matchMedia('(hover: none) and (pointer: coarse)').matches || window.innerWidth <= 900;
+
   function isMobileDevice() {
-    return window.matchMedia('(hover: none) and (pointer: coarse)').matches || window.innerWidth <= 900;
+    return IS_MOBILE_DEVICE;
   }
 
   function enterMobileFullscreenLandscape() {
@@ -2236,7 +2239,10 @@
   }
 
   // Stage Background (random photo from assets/background1..10.jpg, aspect-safe without stretching)
-  function drawStage() {
+  let mobileStageCacheCanvas = null;
+  let mobileStageCacheKey = '';
+
+  function renderStageToContext(targetCtx) {
     const bg = currentStageBg;
     if (bg && bg.complete && bg.naturalWidth > 0) {
       const iw = bg.naturalWidth;
@@ -2249,75 +2255,95 @@
         const dh = ih * scale;
         const dx = (STAGE.width - dw) / 2;
         const dy = (STAGE.height - dh) * 0.25;
-        ctx.drawImage(bg, dx, dy, dw, dh);
+        targetCtx.drawImage(bg, dx, dy, dw, dh);
       } else {
         // Portrait photo: skip expensive GPU blur on mobile for 60 FPS performance
         if (!isMobileDevice()) {
-          ctx.save();
-          ctx.filter = 'blur(14px) brightness(0.42)';
+          targetCtx.save();
+          targetCtx.filter = 'blur(14px) brightness(0.42)';
           const coverScale = Math.max(STAGE.width / iw, STAGE.height / ih);
           const cw = iw * coverScale;
           const ch = ih * coverScale;
-          ctx.drawImage(bg, (STAGE.width - cw) / 2, (STAGE.height - ch) / 2, cw, ch);
-          ctx.restore();
+          targetCtx.drawImage(bg, (STAGE.width - cw) / 2, (STAGE.height - ch) / 2, cw, ch);
+          targetCtx.restore();
         } else {
-          ctx.fillStyle = '#0b0d14';
-          ctx.fillRect(0, 0, STAGE.width, STAGE.floorTopY);
+          targetCtx.fillStyle = '#0b0d14';
+          targetCtx.fillRect(0, 0, STAGE.width, STAGE.floorTopY);
         }
 
         const containScale = Math.min(STAGE.width / iw, STAGE.height / ih);
         const dw = iw * containScale;
         const dh = ih * containScale;
-        ctx.drawImage(bg, (STAGE.width - dw) / 2, (STAGE.height - dh) / 2, dw, dh);
+        targetCtx.drawImage(bg, (STAGE.width - dw) / 2, (STAGE.height - dh) / 2, dw, dh);
       }
 
       // Subtle dark contrast overlay so fighters & HUD stay crisp
-      ctx.fillStyle = 'rgba(7, 8, 14, 0.34)';
-      ctx.fillRect(0, 0, STAGE.width, STAGE.floorTopY);
+      targetCtx.fillStyle = 'rgba(7, 8, 14, 0.34)';
+      targetCtx.fillRect(0, 0, STAGE.width, STAGE.floorTopY);
     } else {
-      const sky = ctx.createLinearGradient(0, 0, 0, STAGE.floorTopY);
+      const sky = targetCtx.createLinearGradient(0, 0, 0, STAGE.floorTopY);
       sky.addColorStop(0, '#07080d');
       sky.addColorStop(0.55, '#151824');
       sky.addColorStop(1, '#261822');
-      ctx.fillStyle = sky;
-      ctx.fillRect(0, 0, STAGE.width, STAGE.floorTopY);
+      targetCtx.fillStyle = sky;
+      targetCtx.fillRect(0, 0, STAGE.width, STAGE.floorTopY);
     }
 
     // Polished Wooden Dojo Floor (starts at floorTopY; fighters stand in the middle at groundY)
     const floorH = STAGE.height - STAGE.floorTopY;
-    const woodGrad = ctx.createLinearGradient(0, STAGE.floorTopY, 0, STAGE.height);
+    const woodGrad = targetCtx.createLinearGradient(0, STAGE.floorTopY, 0, STAGE.height);
     woodGrad.addColorStop(0, '#5a3821');
     woodGrad.addColorStop(0.45, '#422716');
     woodGrad.addColorStop(1, '#24140b');
-    ctx.fillStyle = woodGrad;
-    ctx.fillRect(0, STAGE.floorTopY, STAGE.width, floorH);
+    targetCtx.fillStyle = woodGrad;
+    targetCtx.fillRect(0, STAGE.floorTopY, STAGE.width, floorH);
 
     // Subtle horizontal plank bands
-    ctx.fillStyle = 'rgba(255, 210, 160, 0.04)';
-    ctx.fillRect(0, STAGE.floorTopY + 18, STAGE.width, 20);
-    ctx.fillRect(0, STAGE.floorTopY + 64, STAGE.width, 24);
+    targetCtx.fillStyle = 'rgba(255, 210, 160, 0.04)';
+    targetCtx.fillRect(0, STAGE.floorTopY + 18, STAGE.width, 20);
+    targetCtx.fillRect(0, STAGE.floorTopY + 64, STAGE.width, 24);
 
     // Perspective plank seams
-    ctx.strokeStyle = 'rgba(18, 9, 4, 0.55)';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
+    targetCtx.strokeStyle = 'rgba(18, 9, 4, 0.55)';
+    targetCtx.lineWidth = 2;
+    targetCtx.beginPath();
     for (let y = STAGE.floorTopY + 18; y < STAGE.height; y += 26) {
-      ctx.moveTo(0, y);
-      ctx.lineTo(STAGE.width, y);
+      targetCtx.moveTo(0, y);
+      targetCtx.lineTo(STAGE.width, y);
     }
     for (let i = -6; i <= 6; i++) {
-      ctx.moveTo(480 + i * 74, STAGE.floorTopY);
-      ctx.lineTo(480 + i * 140, STAGE.height);
+      targetCtx.moveTo(480 + i * 74, STAGE.floorTopY);
+      targetCtx.lineTo(480 + i * 140, STAGE.height);
     }
-    ctx.stroke();
+    targetCtx.stroke();
 
     // Crisp wooden floor horizon trim
-    ctx.strokeStyle = '#9c6b3b';
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.moveTo(0, STAGE.floorTopY);
-    ctx.lineTo(STAGE.width, STAGE.floorTopY);
-    ctx.stroke();
+    targetCtx.strokeStyle = '#9c6b3b';
+    targetCtx.lineWidth = 3;
+    targetCtx.beginPath();
+    targetCtx.moveTo(0, STAGE.floorTopY);
+    targetCtx.lineTo(STAGE.width, STAGE.floorTopY);
+    targetCtx.stroke();
+  }
+
+  function drawStage() {
+    if (isMobileDevice()) {
+      const bg = currentStageBg;
+      const cacheKey = bg && bg.complete && bg.naturalWidth > 0 ? bg.src : 'fallback';
+      if (!mobileStageCacheCanvas || mobileStageCacheKey !== cacheKey) {
+        if (!mobileStageCacheCanvas) {
+          mobileStageCacheCanvas = document.createElement('canvas');
+          mobileStageCacheCanvas.width = STAGE.width;
+          mobileStageCacheCanvas.height = STAGE.height;
+        }
+        const cctx = mobileStageCacheCanvas.getContext('2d');
+        renderStageToContext(cctx);
+        mobileStageCacheKey = cacheKey;
+      }
+      ctx.drawImage(mobileStageCacheCanvas, 0, 0);
+      return;
+    }
+    renderStageToContext(ctx);
   }
 
   function renderEffects() {
@@ -2502,8 +2528,8 @@
     updateHUD();
   }
 
-  // Main Loop: PC runs 1 step/rAF (untouched); Mobile uses 120Hz delta-time catch-up to match high-refresh PC speed
-  const MOBILE_STEP_MS = 1000 / 120;
+  // Main Loop: PC runs 1 step/rAF (untouched); Mobile uses smooth 60 FPS delta-time + cached stage
+  const MOBILE_STEP_MS = 1000 / 60;
   let mobileLastTime = performance.now();
   let mobileAccumulator = 0;
 
@@ -2586,8 +2612,7 @@
       } else {
         if (gameMode === 'FIGHT') {
           timerTicks++;
-          const ticksPerSec = isMobileDevice() ? 120 : 60;
-          if (timerTicks >= ticksPerSec) {
+          if (timerTicks >= 60) {
             timerTicks = 0;
             roundTimer = Math.max(0, roundTimer - 1);
             if (roundTimer === 0) handleTimeOver();
@@ -2625,7 +2650,7 @@
       mobileLastTime = ts;
       mobileAccumulator += dt;
       let steps = 0;
-      while (mobileAccumulator >= MOBILE_STEP_MS - 0.5 && steps < 8) {
+      while (mobileAccumulator >= MOBILE_STEP_MS - 0.5 && steps < 3) {
         stepSimulation();
         mobileAccumulator -= MOBILE_STEP_MS;
         if (mobileAccumulator < 0) mobileAccumulator = 0;
