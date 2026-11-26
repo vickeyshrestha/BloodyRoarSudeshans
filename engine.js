@@ -2502,8 +2502,8 @@
     updateHUD();
   }
 
-  // Main Loop: PC runs 1 step/rAF (untouched 60 FPS); Mobile uses delta-time catch-up so 20/30Hz mobile runs at full 60 FPS speed
-  const MOBILE_STEP_MS = 1000 / 60;
+  // Main Loop: PC runs 1 step/rAF (untouched); Mobile uses 120Hz delta-time catch-up to match high-refresh PC speed
+  const MOBILE_STEP_MS = 1000 / 120;
   let mobileLastTime = performance.now();
   let mobileAccumulator = 0;
 
@@ -2586,7 +2586,8 @@
       } else {
         if (gameMode === 'FIGHT') {
           timerTicks++;
-          if (timerTicks >= 60) {
+          const ticksPerSec = isMobileDevice() ? 120 : 60;
+          if (timerTicks >= ticksPerSec) {
             timerTicks = 0;
             roundTimer = Math.max(0, roundTimer - 1);
             if (roundTimer === 0) handleTimeOver();
@@ -2598,7 +2599,6 @@
         applyPhysics(p2);
         resolvePushbox();
       }
-      updateHUD();
 
       // Online Host: broadcast authoritative state to Guest
       if (onlineRole === 'host') {
@@ -2625,7 +2625,7 @@
       mobileLastTime = ts;
       mobileAccumulator += dt;
       let steps = 0;
-      while (mobileAccumulator >= MOBILE_STEP_MS - 0.5 && steps < 4) {
+      while (mobileAccumulator >= MOBILE_STEP_MS - 0.5 && steps < 8) {
         stepSimulation();
         mobileAccumulator -= MOBILE_STEP_MS;
         if (mobileAccumulator < 0) mobileAccumulator = 0;
@@ -2633,6 +2633,13 @@
       }
     } else {
       stepSimulation();
+    }
+
+    if (
+      (gameMode === 'ROUND_INTRO' || gameMode === 'FIGHT' || gameMode === 'ROUND_END') &&
+      onlineRole !== 'guest'
+    ) {
+      updateHUD();
     }
 
     ctx.save();
