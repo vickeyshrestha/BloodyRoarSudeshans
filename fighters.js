@@ -132,6 +132,28 @@ const FIGHTERS = [
       beastHorn: '#dcd4be',
       eye: '#cf3838'
     }
+  },
+  {
+    id: 'krishna',
+    name: 'Krishna Hari Thapa',
+    beastName: 'Cock Rooster',
+    portraitSrc: 'assets/sprites/krishna_human.png',
+    desc: 'Fierce rooster-beast martial artist with razor-sharp spurs & relentless low sweeps.',
+    stats: { speed: 9, power: 7, range: 7, health: 100, jumpForce: -14.4, scale: 1.0 },
+    palette: {
+      skin: '#b58260',
+      skinShadow: '#784e34',
+      hair: '#131318',
+      top: '#185c6b',
+      topShadow: '#0d3640',
+      pants: '#283825',
+      accent: '#d9412b',
+      beastMain: '#b84c1d',
+      beastDark: '#6b240b',
+      beastLight: '#e07a38',
+      beastHorn: '#d6a347',
+      eye: '#f2c12e'
+    }
   }
 ];
 
@@ -167,14 +189,20 @@ function preloadAllSprites() {
     });
   });
 
-  // Custom crouching & low-attack sprites for Vickey (human & beast forms)
+  // Custom crouching & low-attack sprites for Vickey & Krishna (human & beast forms)
   [
     'vickey_human_crouch',
     'vickey_human_low_punch',
     'vickey_human_low_kick',
     'vickey_beast_crouch',
     'vickey_beast_low_punch',
-    'vickey_beast_low_kick'
+    'vickey_beast_low_kick',
+    'krishna_human_crouch',
+    'krishna_human_low_punch',
+    'krishna_human_low_kick',
+    'krishna_beast_crouch',
+    'krishna_beast_low_punch',
+    'krishna_beast_low_kick'
   ].forEach(loadSpriteKey);
 }
 
