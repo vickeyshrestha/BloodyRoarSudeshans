@@ -174,6 +174,7 @@
     block: false,
     punch: false,
     kick: false,
+    throw: false,
     transform: false
   };
   let roundTimer = 99;
@@ -934,6 +935,7 @@
             remoteInput.block = !!inp.block;
             if (inp.punch) remoteInput.punch = true;
             if (inp.kick) remoteInput.kick = true;
+            if (inp.throw) remoteInput.throw = true;
             if (inp.transform) remoteInput.transform = true;
           }
         },
@@ -1309,6 +1311,20 @@
         heavy: true
       };
     }
+    if (type === 'throw') {
+      return {
+        startup: 4,
+        active: 4,
+        recovery: 16,
+        damage: Math.max(4, Math.round((11 + pwr * 0.9) * formMult)),
+        range: 76 + rng * 3.5,
+        height: 110,
+        knockback: 10.5,
+        hitstun: 28,
+        heavy: true,
+        isThrow: true
+      };
+    }
     return {
       startup: 10,
       active: 8,
@@ -1388,7 +1404,8 @@
       f.state === 'punch' ||
       f.state === 'kick' ||
       f.state === 'low_punch' ||
-      f.state === 'low_kick'
+      f.state === 'low_kick' ||
+      f.state === 'throw'
     ) {
       const spec = getAttackSpec(f, f.state);
       f.stateFrame++;
@@ -1433,6 +1450,7 @@
     let down = false;
     let punch = false;
     let kick = false;
+    let throwBtn = false;
     let transform = false;
 
     if (!f.isCPU && !(onlineRole === 'host' && f === p2)) {
@@ -1442,6 +1460,7 @@
       down = keysHeld.has('ArrowDown');
       punch = keysJustPressed.has('KeyA');
       kick = keysJustPressed.has('KeyS');
+      throwBtn = keysJustPressed.has('KeyD');
       transform = keysJustPressed.has('KeyX');
     } else if (onlineRole === 'host' && f === p2) {
       left = remoteInput.left;
@@ -1450,9 +1469,11 @@
       down = remoteInput.down;
       punch = remoteInput.punch;
       kick = remoteInput.kick;
+      throwBtn = remoteInput.throw;
       transform = remoteInput.transform;
       remoteInput.punch = false;
       remoteInput.kick = false;
+      remoteInput.throw = false;
       remoteInput.transform = false;
     } else {
       const ai = computeCPUInput(f, opponent);
@@ -1462,6 +1483,7 @@
       down = ai.down;
       punch = ai.punch;
       kick = ai.kick;
+      throwBtn = ai.throw;
       transform = ai.transform;
     }
 
@@ -1482,6 +1504,16 @@
     if (holdingBack && grounded && opponentAttacking) {
       f.state = 'block';
       f.vx = 0;
+      return;
+    }
+
+    if (throwBtn && grounded) {
+      f.state = 'throw';
+      f.stateFrame = 0;
+      f.hasHitThisAttack = false;
+      f.comboQueued = false;
+      f.vx = 0;
+      SoundFX.playPunch();
       return;
     }
 
@@ -1558,6 +1590,7 @@
       block: false,
       punch: false,
       kick: false,
+      throw: false,
       transform: false
     };
 
@@ -1618,7 +1651,13 @@
     }
 
     if (dist < 88) {
-      if (r < diffCfg.aggro * 0.58) out.punch = true;
+      if (
+        dist < 75 &&
+        (player.state === 'block' || player.state === 'crouch') &&
+        r < diffCfg.aggro * 0.25
+      ) {
+        out.throw = true;
+      } else if (r < diffCfg.aggro * 0.58) out.punch = true;
       else if (r < diffCfg.aggro) out.kick = true;
       else if (r < 0.82) cpu.aiAction = 'pause';
       else cpu.aiAction = 'retreat';
@@ -1665,7 +1704,8 @@
       f.state !== 'punch' &&
       f.state !== 'kick' &&
       f.state !== 'low_punch' &&
-      f.state !== 'low_kick'
+      f.state !== 'low_kick' &&
+      f.state !== 'throw'
     ) {
       return null;
     }
@@ -1677,10 +1717,12 @@
     const w = spec.range;
     const h = spec.height;
     const x = f.facing === 1 ? f.x + 20 * s : f.x - 20 * s - w;
-    let y = f.y - 166 * s;
-    if (f.state === 'kick') y = f.y - 142 * s;
+    const isAir = f.y < STAGE.groundY - 1;
+    let y = isAir ? f.y - 110 * s : f.y - 166 * s;
+    if (f.state === 'kick') y = isAir ? f.y - 95 * s : f.y - 142 * s;
     else if (f.state === 'low_punch') y = f.y - 90 * s;
     else if (f.state === 'low_kick') y = f.y - 56 * s;
+    else if (f.state === 'throw') y = f.y - 125 * s;
     return { x, y, w, h };
   }
 
@@ -1692,6 +1734,27 @@
   function checkAttackHit(attacker, defender, spec) {
     if (defender.state === 'ko' || defender.state === 'transform') return;
 
+    const defenderCrouching =
+      defender.state === 'crouch' ||
+      defender.state === 'low_punch' ||
+      defender.state === 'low_kick';
+    const attackerGrounded = attacker.y >= STAGE.groundY - 1;
+
+    // Rock-Paper-Scissors: standing mid punch/kick whiffs over crouching opponents
+    if (
+      !spec.isThrow &&
+      attackerGrounded &&
+      (attacker.state === 'punch' || attacker.state === 'kick') &&
+      defenderCrouching
+    ) {
+      return;
+    }
+
+    // Throws only grab grounded/crouching/blocking opponents (not high airborne)
+    if (spec.isThrow && defender.y < STAGE.groundY - 35) {
+      return;
+    }
+
     const hitbox = getActiveHitbox(attacker);
     const hurtbox = getHurtbox(defender);
     if (!boxesIntersect(hitbox, hurtbox)) return;
@@ -1701,10 +1764,11 @@
     const impactY = hitbox.y + hitbox.h * 0.5;
 
     const defenderCanBlock =
-      defender.state === 'block' ||
-      (defender.holdingBack &&
-        defender.y >= STAGE.groundY - 1 &&
-        (defender.state === 'idle' || defender.state === 'walk' || defender.state === 'crouch'));
+      !spec.isThrow &&
+      (defender.state === 'block' ||
+        (defender.holdingBack &&
+          defender.y >= STAGE.groundY - 1 &&
+          (defender.state === 'idle' || defender.state === 'walk' || defender.state === 'crouch')));
     if (defenderCanBlock) {
       defender.state = 'block';
       defender.vx = 0;
@@ -1731,7 +1795,11 @@
       defender.hitstunFrames = spec.hitstun;
       defender.hitFlash = 6;
       defender.vx = attacker.facing * spec.knockback;
-      if (spec.heavy) defender.vy = -2.4;
+      if (spec.isThrow) {
+        defender.vy = -6.2;
+      } else if (spec.heavy) {
+        defender.vy = -2.4;
+      }
 
       attacker.comboCount++;
       attacker.comboDisplayTimer = 75;
@@ -1757,7 +1825,12 @@
         maxLife: spec.heavy ? 10 : 7,
         angle: Math.random() * Math.PI
       });
-      spawnFloatingText(defender.x, defender.y - 148, `-${spec.damage}`, spec.heavy ? '#e04f5f' : '#e6e8ee');
+      spawnFloatingText(
+        defender.x,
+        defender.y - 148,
+        spec.isThrow ? `THROW! -${spec.damage}` : `-${spec.damage}`,
+        spec.isThrow ? '#a078ff' : spec.heavy ? '#e04f5f' : '#e6e8ee'
+      );
 
       // 4-6 frames hitstop on hit
       hitstopFrames = spec.heavy ? 6 : 4;
@@ -2095,7 +2168,7 @@
     updateFighterHUD('p1', p1);
     updateFighterHUD('p2', p2);
 
-    const keyMap = { KeyA: 'hud-key-A', KeyS: 'hud-key-S', KeyX: 'hud-key-X' };
+    const keyMap = { KeyA: 'hud-key-A', KeyS: 'hud-key-S', KeyD: 'hud-key-D', KeyX: 'hud-key-X' };
     Object.entries(keyMap).forEach(([code, elId]) => {
       const el = document.getElementById(elId);
       if (el) el.classList.toggle('active', keysHeld.has(code));
@@ -2477,6 +2550,7 @@
           down: keysHeld.has('ArrowDown'),
           punch: keysJustPressed.has('KeyA'),
           kick: keysJustPressed.has('KeyS'),
+          throw: keysJustPressed.has('KeyD'),
           transform: keysJustPressed.has('KeyX')
         });
       }
