@@ -189,7 +189,7 @@ function preloadAllSprites() {
     });
   });
 
-  // Custom crouching & low-attack sprites for Vickey & Krishna (human & beast forms)
+  // Custom crouching & low-attack sprites for Vickey, Krishna & Adheesh (human & beast forms)
   [
     'vickey_human_crouch',
     'vickey_human_low_punch',
@@ -202,7 +202,13 @@ function preloadAllSprites() {
     'krishna_human_low_kick',
     'krishna_beast_crouch',
     'krishna_beast_low_punch',
-    'krishna_beast_low_kick'
+    'krishna_beast_low_kick',
+    'adheesh_human_crouch',
+    'adheesh_human_low_punch',
+    'adheesh_human_low_kick',
+    'adheesh_beast_crouch',
+    'adheesh_beast_low_punch',
+    'adheesh_beast_low_kick'
   ].forEach(loadSpriteKey);
 }
 
