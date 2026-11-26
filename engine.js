@@ -2502,11 +2502,14 @@
     updateHUD();
   }
 
-  // Main Loop
-  function loop() {
+  // Main Loop: PC runs 1 step/rAF (untouched 60 FPS); Mobile uses delta-time catch-up so 20/30Hz mobile runs at full 60 FPS speed
+  const MOBILE_STEP_MS = 1000 / 60;
+  let mobileLastTime = performance.now();
+  let mobileAccumulator = 0;
+
+  function stepSimulation() {
     if (isPaused) {
       keysJustPressed.clear();
-      requestAnimationFrame(loop);
       return;
     }
     globalTime++;
@@ -2612,6 +2615,26 @@
       }
     }
 
+    keysJustPressed.clear();
+  }
+
+  function loop(now) {
+    if (isMobileDevice()) {
+      const ts = now || performance.now();
+      const dt = Math.min(80, Math.max(0, ts - mobileLastTime));
+      mobileLastTime = ts;
+      mobileAccumulator += dt;
+      let steps = 0;
+      while (mobileAccumulator >= MOBILE_STEP_MS - 0.5 && steps < 4) {
+        stepSimulation();
+        mobileAccumulator -= MOBILE_STEP_MS;
+        if (mobileAccumulator < 0) mobileAccumulator = 0;
+        steps++;
+      }
+    } else {
+      stepSimulation();
+    }
+
     ctx.save();
     if (shakeFrames > 0) {
       shakeFrames--;
@@ -2640,7 +2663,6 @@
     }
     ctx.restore();
 
-    keysJustPressed.clear();
     requestAnimationFrame(loop);
   }
 
