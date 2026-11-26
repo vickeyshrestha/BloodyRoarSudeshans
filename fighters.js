@@ -137,7 +137,7 @@ const FIGHTERS = [
     id: 'krishna',
     name: 'Krishna Hari Thapa',
     beastName: 'Cock Rooster',
-    portraitSrc: 'assets/sprites/krishna_human.png',
+    portraitSrc: 'assets/Krishna.jpg',
     desc: 'Fierce rooster-beast martial artist with razor-sharp spurs & relentless low sweeps.',
     stats: { speed: 9, power: 7, range: 7, health: 100, jumpForce: -14.4, scale: 1.0 },
     palette: {
