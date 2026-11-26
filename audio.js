@@ -8,6 +8,7 @@ const SoundFX = (() => {
   let bgmStarted = false;
   let bossBgm = null;
   let bossBgmActive = false;
+  const roundSounds = {};
 
   function initBGM() {
     if (!bgm) {
@@ -286,6 +287,9 @@ const SoundFX = (() => {
           bossBgm.play().catch(() => {});
         }
       }
+      Object.values(roundSounds).forEach((s) => {
+        s.muted = muted;
+      });
       return muted;
     },
     playMenuSelect() {
@@ -339,6 +343,25 @@ const SoundFX = (() => {
       playNoiseBurst(0.35, 950, 0.24, 'bandpass');
       playTone(110, 320, 0.22, 'sawtooth', 0.16);
       playBeastSound(beastId, false);
+    },
+    playRoundAnnounce(roundNum = 1) {
+      if (muted) return;
+      const key = roundNum === 1 ? '1' : roundNum === 2 ? '2' : 'final';
+      const src =
+        key === '1'
+          ? 'assets/round1.mp3'
+          : key === '2'
+            ? 'assets/round2.mp3'
+            : 'assets/round_final.mp3';
+      let snd = roundSounds[key];
+      if (!snd) {
+        snd = new Audio(src);
+        snd.volume = 0.85;
+        roundSounds[key] = snd;
+      }
+      snd.muted = muted;
+      snd.currentTime = 0;
+      snd.play().catch(() => {});
     },
     playRoundStart() {
       playTone(330, 440, 0.12, 'square', 0.12);

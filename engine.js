@@ -1131,7 +1131,7 @@
         ? 'FINAL STAGE'
         : `STAGE ${arcadeStage}`;
     showBanner(roundTitle, subTitle, 240);
-    SoundFX.playMenuSelect();
+    SoundFX.playRoundAnnounce(roundNumber);
   }
 
   function showBanner(main, sub = '', duration = 75) {
