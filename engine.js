@@ -430,62 +430,97 @@
     });
   }
 
-  // Mobile Touch Controls Binding (pointer-ID tracked so buttons never stick)
-  const activeTouchPointers = new Map();
+  // Mobile Touch Controls Binding (live TouchList sync on iOS/Android so buttons never stick)
+  const touchControlsEl = document.getElementById('touch-controls');
+  const touchBtnMap = new Map();
+  document.querySelectorAll('.touch-btn[data-key]').forEach((btn) => {
+    touchBtnMap.set(btn.dataset.key, btn);
+    btn.addEventListener('contextmenu', (e) => e.preventDefault());
+    btn.addEventListener('selectstart', (e) => e.preventDefault());
+  });
 
-  function releaseTouchPointer(pointerId) {
-    const entry = activeTouchPointers.get(pointerId);
-    if (!entry) return;
-    activeTouchPointers.delete(pointerId);
-    const { code, btn } = entry;
-    let stillHeld = false;
-    for (const other of activeTouchPointers.values()) {
-      if (other.code === code) {
-        stillHeld = true;
-        break;
+  let activeTouchKeys = new Set();
+
+  function applyTouchKeys(nextKeys) {
+    for (const code of activeTouchKeys) {
+      if (!nextKeys.has(code)) {
+        keysHeld.delete(code);
+        const btn = touchBtnMap.get(code);
+        if (btn) btn.classList.remove('pressed');
       }
     }
-    if (!stillHeld) {
-      keysHeld.delete(code);
-      btn.classList.remove('pressed');
+    for (const code of nextKeys) {
+      if (!activeTouchKeys.has(code)) {
+        if (!keysHeld.has(code)) keysJustPressed.add(code);
+        keysHeld.add(code);
+        const btn = touchBtnMap.get(code);
+        if (btn) btn.classList.add('pressed');
+      }
     }
+    activeTouchKeys = nextKeys;
   }
 
   function clearAllTouchPointers() {
-    for (const { code, btn } of activeTouchPointers.values()) {
-      keysHeld.delete(code);
-      btn.classList.remove('pressed');
-    }
-    activeTouchPointers.clear();
+    applyTouchKeys(new Set());
   }
 
-  document.querySelectorAll('.touch-btn[data-key]').forEach((btn) => {
-    const code = btn.dataset.key;
-    btn.addEventListener('contextmenu', (e) => e.preventDefault());
-    btn.addEventListener('pointerdown', (e) => {
+  if (touchControlsEl && 'ontouchstart' in window) {
+    const syncTouches = (e) => {
       e.preventDefault();
-      try {
-        btn.setPointerCapture(e.pointerId);
-      } catch (_) {}
-      activeTouchPointers.set(e.pointerId, { code, btn });
-      if (!keysHeld.has(code)) keysJustPressed.add(code);
-      keysHeld.add(code);
-      btn.classList.add('pressed');
-    });
-    const onEnd = (e) => {
-      e.preventDefault();
-      releaseTouchPointer(e.pointerId);
+      const next = new Set();
+      for (let i = 0; i < e.touches.length; i++) {
+        const t = e.touches[i];
+        const el = document.elementFromPoint(t.clientX, t.clientY);
+        const btn = el && el.closest ? el.closest('.touch-btn[data-key]') : null;
+        if (btn && btn.dataset.key) {
+          next.add(btn.dataset.key);
+        }
+      }
+      applyTouchKeys(next);
     };
-    btn.addEventListener('pointerup', onEnd);
-    btn.addEventListener('pointercancel', onEnd);
-    btn.addEventListener('lostpointercapture', onEnd);
-  });
+    touchControlsEl.addEventListener('touchstart', syncTouches, { passive: false });
+    touchControlsEl.addEventListener('touchmove', syncTouches, { passive: false });
+    touchControlsEl.addEventListener('touchend', syncTouches, { passive: false });
+    touchControlsEl.addEventListener('touchcancel', clearAllTouchPointers, { passive: false });
+  } else {
+    // Desktop / non-touch pointer fallback
+    const activeTouchPointers = new Map();
+    const releasePointer = (pointerId) => {
+      const entry = activeTouchPointers.get(pointerId);
+      if (!entry) return;
+      activeTouchPointers.delete(pointerId);
+      const next = new Set();
+      for (const other of activeTouchPointers.values()) next.add(other.code);
+      applyTouchKeys(next);
+    };
+    touchBtnMap.forEach((btn, code) => {
+      btn.addEventListener('pointerdown', (e) => {
+        e.preventDefault();
+        activeTouchPointers.set(e.pointerId, { code, btn });
+        const next = new Set(activeTouchKeys);
+        next.add(code);
+        applyTouchKeys(next);
+      });
+      const onEnd = (e) => {
+        e.preventDefault();
+        releasePointer(e.pointerId);
+      };
+      btn.addEventListener('pointerup', onEnd);
+      btn.addEventListener('pointercancel', onEnd);
+    });
+    window.addEventListener('pointerup', (e) => releasePointer(e.pointerId));
+    window.addEventListener('pointercancel', (e) => releasePointer(e.pointerId));
+  }
 
-  window.addEventListener('pointerup', (e) => releaseTouchPointer(e.pointerId));
-  window.addEventListener('pointercancel', (e) => releaseTouchPointer(e.pointerId));
-  window.addEventListener('blur', clearAllTouchPointers);
+  window.addEventListener('blur', () => {
+    keysHeld.clear();
+    clearAllTouchPointers();
+  });
   document.addEventListener('visibilitychange', () => {
-    if (document.hidden) clearAllTouchPointers();
+    if (document.hidden) {
+      keysHeld.clear();
+      clearAllTouchPointers();
+    }
   });
 
   // Build Character Select Cards

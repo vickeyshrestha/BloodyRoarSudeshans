@@ -1563,19 +1563,26 @@ kbd {
   position: absolute;
   left: 0;
   right: 0;
-  bottom: 10px;
-  padding: 0 14px;
+  bottom: max(10px, env(safe-area-inset-bottom));
+  padding: 0 max(14px, env(safe-area-inset-right)) 0 max(14px, env(safe-area-inset-left));
   display: none;
   justify-content: space-between;
   align-items: flex-end;
+  gap: 12px;
   pointer-events: none;
   z-index: 30;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
 }
 
 .touch-dpad,
 .touch-actions {
   pointer-events: auto;
   touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
 }
 
 .touch-dpad {
@@ -1602,7 +1609,17 @@ kbd {
   font-weight: 900;
   touch-action: none;
   -webkit-tap-highlight-color: transparent;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
   cursor: pointer;
+}
+
+.touch-btn * {
+  pointer-events: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
 }
 
 .touch-btn.pressed,
@@ -1657,6 +1674,31 @@ kbd {
   #btn-pause,
   #btn-fullscreen {
     display: none !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .touch-controls {
+    padding: 0 10px;
+  }
+  .touch-dpad .touch-btn {
+    width: 38px;
+    height: 36px;
+    font-size: 14px;
+  }
+  .dpad-mid {
+    gap: 28px;
+  }
+  .touch-actions {
+    grid-template-columns: repeat(3, 46px);
+    gap: 6px;
+  }
+  .act-btn {
+    width: 46px;
+    height: 44px;
+  }
+  .act-btn span {
+    font-size: 14px;
   }
 }
 
