@@ -236,7 +236,13 @@ function preloadAllSprites() {
     'sunil_human_low_kick',
     'sunil_beast_crouch',
     'sunil_beast_low_punch',
-    'sunil_beast_low_kick'
+    'sunil_beast_low_kick',
+    'sumit_human_crouch',
+    'sumit_human_low_punch',
+    'sumit_human_low_kick',
+    'sumit_beast_crouch',
+    'sumit_beast_low_punch',
+    'sumit_beast_low_kick'
   ].forEach(loadSpriteKey);
 }
 
