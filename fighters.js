@@ -145,24 +145,30 @@ const SPRITE_CACHE = {};
 const SPRITE_VERSION = '3';
 
 function preloadAllSprites() {
+  const loadSpriteKey = (key) => {
+    const img = new Image();
+    const entry = { img, loaded: false, error: false };
+    img.onload = () => {
+      if (img.naturalWidth > 0) entry.loaded = true;
+      else entry.error = true;
+    };
+    img.onerror = () => {
+      entry.error = true;
+    };
+    img.src = `assets/sprites/${key}.png?v=${SPRITE_VERSION}`;
+    SPRITE_CACHE[key] = entry;
+  };
+
   FIGHTERS.forEach((f) => {
     ['human', 'beast'].forEach((form) => {
       ['', '_punch', '_kick', '_walk'].forEach((action) => {
-        const key = `${f.id}_${form}${action}`;
-        const img = new Image();
-        const entry = { img, loaded: false, error: false };
-        img.onload = () => {
-          if (img.naturalWidth > 0) entry.loaded = true;
-          else entry.error = true;
-        };
-        img.onerror = () => {
-          entry.error = true;
-        };
-        img.src = `assets/sprites/${key}.png?v=${SPRITE_VERSION}`;
-        SPRITE_CACHE[key] = entry;
+        loadSpriteKey(`${f.id}_${form}${action}`);
       });
     });
   });
+
+  // Custom crouching & low-attack sprites for Vickey (human form)
+  ['vickey_human_crouch', 'vickey_human_low_punch', 'vickey_human_low_kick'].forEach(loadSpriteKey);
 }
 
 preloadAllSprites();
@@ -364,26 +370,65 @@ function drawFighter(ctx, f, globalTime) {
   if (idleImg) {
     // Select action sprite during Active & early Recovery phases, or 2-frame Walk stride
     let activeImg = idleImg;
-    if (
-      (f.state === 'punch' && f.stateFrame >= 6 && f.stateFrame < 17) ||
-      (f.state === 'low_punch' && f.stateFrame >= 5 && f.stateFrame < 15)
-    ) {
+    let customHeightScale = 1.0;
+    let hasCustomLowSprite = false;
+
+    if (f.state === 'crouch') {
+      const crouchImg = getFighterSprite(f.data.id, f.isBeast, '_crouch');
+      if (crouchImg) {
+        activeImg = crouchImg;
+        customHeightScale = 0.8;
+        hasCustomLowSprite = true;
+      }
+    } else if (f.state === 'punch' && f.stateFrame >= 6 && f.stateFrame < 17) {
       activeImg = getFighterSprite(f.data.id, f.isBeast, '_punch') || idleImg;
-    } else if (
-      (f.state === 'kick' && f.stateFrame >= 10 && f.stateFrame < 25) ||
-      (f.state === 'low_kick' && f.stateFrame >= 8 && f.stateFrame < 22)
-    ) {
+    } else if (f.state === 'low_punch') {
+      const crouchImg = getFighterSprite(f.data.id, f.isBeast, '_crouch');
+      const lowPunchImg = getFighterSprite(f.data.id, f.isBeast, '_low_punch');
+      if (f.stateFrame >= 5 && f.stateFrame < 15 && lowPunchImg) {
+        activeImg = lowPunchImg;
+        customHeightScale = 0.76;
+        hasCustomLowSprite = true;
+      } else if (crouchImg) {
+        activeImg = crouchImg;
+        customHeightScale = 0.8;
+        hasCustomLowSprite = true;
+      } else if (f.stateFrame >= 5 && f.stateFrame < 15) {
+        activeImg = getFighterSprite(f.data.id, f.isBeast, '_punch') || idleImg;
+      }
+    } else if (f.state === 'kick' && f.stateFrame >= 10 && f.stateFrame < 25) {
       activeImg = getFighterSprite(f.data.id, f.isBeast, '_kick') || idleImg;
+    } else if (f.state === 'low_kick') {
+      const crouchImg = getFighterSprite(f.data.id, f.isBeast, '_crouch');
+      const lowKickImg = getFighterSprite(f.data.id, f.isBeast, '_low_kick');
+      if (f.stateFrame >= 8 && f.stateFrame < 22 && lowKickImg) {
+        activeImg = lowKickImg;
+        customHeightScale = 0.66;
+        hasCustomLowSprite = true;
+      } else if (crouchImg) {
+        activeImg = crouchImg;
+        customHeightScale = 0.8;
+        hasCustomLowSprite = true;
+      } else if (f.stateFrame >= 8 && f.stateFrame < 22) {
+        activeImg = getFighterSprite(f.data.id, f.isBeast, '_kick') || idleImg;
+      }
     } else if (f.state === 'walk' && Math.floor((f.walkFrame || 0) / 9) % 2 === 1) {
       activeImg = getFighterSprite(f.data.id, f.isBeast, '_walk') || idleImg;
     }
-    drawSpriteFighter(ctx, f, activeImg, globalTime);
+    drawSpriteFighter(ctx, f, activeImg, globalTime, customHeightScale, hasCustomLowSprite);
     return;
   }
   drawVectorFighter(ctx, f, globalTime);
 }
 
-function drawSpriteFighter(ctx, f, img, globalTime) {
+function drawSpriteFighter(
+  ctx,
+  f,
+  img,
+  globalTime,
+  customHeightScale = 1.0,
+  hasCustomLowSprite = false
+) {
   const data = f.data;
   const pal = data.palette;
   const isBeast = f.isBeast;
@@ -394,7 +439,7 @@ function drawSpriteFighter(ctx, f, img, globalTime) {
   if (data.id === 'adheesh' && isBeast) sizeMult = 1.2;
   else if (data.id === 'sumit' && isBeast) sizeMult = 0.85;
 
-  const targetH = 260 * sizeMult;
+  const targetH = 260 * sizeMult * customHeightScale;
   const aspect = (img.naturalWidth || 100) / (img.naturalHeight || 100);
   const drawH = targetH;
   const drawW = targetH * aspect;
@@ -457,9 +502,11 @@ function drawSpriteFighter(ctx, f, img, globalTime) {
       break;
     }
     case 'crouch':
-      sy = 0.76;
-      sx = 1.08;
-      offsetY = 4;
+      if (!hasCustomLowSprite) {
+        sy = 0.76;
+        sx = 1.08;
+        offsetY = 4;
+      }
       break;
     case 'jump':
       sy = 1.04;
@@ -485,7 +532,7 @@ function drawSpriteFighter(ctx, f, img, globalTime) {
         offsetX = 12 * (1 - p);
         rot = (isLow ? 4 : 2) * deg * (1 - p);
       }
-      if (isLow) {
+      if (isLow && !hasCustomLowSprite) {
         sy *= 0.78;
         sx *= 1.08;
         offsetY += 4;
@@ -512,7 +559,7 @@ function drawSpriteFighter(ctx, f, img, globalTime) {
         offsetX = 12 * (1 - p);
         rot = (isLow ? 6 : -2) * deg * (1 - p);
       }
-      if (isLow) {
+      if (isLow && !hasCustomLowSprite) {
         sy *= 0.72;
         sx *= 1.12;
         offsetY += 6;
