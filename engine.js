@@ -2161,80 +2161,122 @@
     floatingTexts.push({ x, y, text, color, life: 38 });
   }
 
+  let lastHudTimer = -1;
+  let lastHudScore = -1;
+  let lastHudRound = -1;
+  const lastFighterHud = { p1: {}, p2: {} };
+
   function updateHUD() {
     if (!p1 || !p2) return;
 
-    document.getElementById('p1-name').textContent = p1.data.name.toUpperCase();
-    document.getElementById('p2-name').textContent = p2.data.name.toUpperCase();
-    document.getElementById('round-label').textContent = `ROUND ${roundNumber}`;
+    if (lastHudRound !== roundNumber) {
+      lastHudRound = roundNumber;
+      document.getElementById('p1-name').textContent = p1.data.name.toUpperCase();
+      document.getElementById('p2-name').textContent = p2.data.name.toUpperCase();
+      document.getElementById('round-label').textContent = `ROUND ${roundNumber}`;
 
-    const stageBadge = document.getElementById('stage-badge');
-    if (stageBadge) {
-      if (onlineRole) {
-        stageBadge.textContent = 'ONLINE 1V1';
-        stageBadge.classList.remove('boss');
-      } else {
-        stageBadge.textContent = arcadeStage === 5 ? 'FINAL STAGE' : `STAGE ${arcadeStage}`;
-        stageBadge.classList.toggle('boss', arcadeStage === 5);
+      const stageBadge = document.getElementById('stage-badge');
+      if (stageBadge) {
+        if (onlineRole) {
+          stageBadge.textContent = 'ONLINE 1V1';
+          stageBadge.classList.remove('boss');
+        } else {
+          stageBadge.textContent = arcadeStage === 5 ? 'FINAL STAGE' : `STAGE ${arcadeStage}`;
+          stageBadge.classList.toggle('boss', arcadeStage === 5);
+        }
       }
     }
 
-    const timerBox = document.getElementById('timer-box');
-    timerBox.textContent = String(roundTimer).padStart(2, '0');
-    timerBox.classList.toggle('urgent', roundTimer <= 15);
+    if (lastHudTimer !== roundTimer) {
+      lastHudTimer = roundTimer;
+      const timerBox = document.getElementById('timer-box');
+      timerBox.textContent = String(roundTimer).padStart(2, '0');
+      timerBox.classList.toggle('urgent', roundTimer <= 15);
+    }
 
-    if (hudScoreBox) {
+    if (hudScoreBox && lastHudScore !== liveMatchScore) {
+      lastHudScore = liveMatchScore;
       hudScoreBox.textContent = `SCORE: ${liveMatchScore}`;
     }
 
     updateFighterHUD('p1', p1);
     updateFighterHUD('p2', p2);
 
-    const keyMap = { KeyA: 'hud-key-A', KeyS: 'hud-key-S', KeyX: 'hud-key-X' };
-    Object.entries(keyMap).forEach(([code, elId]) => {
-      const el = document.getElementById(elId);
-      if (el) el.classList.toggle('active', keysHeld.has(code));
-    });
+    if (!isMobileDevice()) {
+      const keyMap = { KeyA: 'hud-key-A', KeyS: 'hud-key-S', KeyX: 'hud-key-X' };
+      Object.entries(keyMap).forEach(([code, elId]) => {
+        const el = document.getElementById(elId);
+        if (el) el.classList.toggle('active', keysHeld.has(code));
+      });
+    }
   }
 
   function updateFighterHUD(prefix, f) {
-    const hpPct = Math.max(0, (f.health / f.maxHealth) * 100);
-    const trailPct = Math.max(0, (f.trailHealth / f.maxHealth) * 100);
+    const cache = lastFighterHud[prefix];
+    const hpPct = Math.max(0, Math.round((f.health / f.maxHealth) * 1000) / 10);
+    const trailPct = Math.max(0, Math.round((f.trailHealth / f.maxHealth) * 1000) / 10);
 
-    const fill = document.getElementById(`${prefix}-health-fill`);
-    const trail = document.getElementById(`${prefix}-health-trail`);
-    fill.style.width = `${hpPct}%`;
-    trail.style.width = `${trailPct}%`;
-    fill.classList.toggle('low', hpPct < 28);
-
-    const beastLabel = document.getElementById(`${prefix}-beast-label`);
-    if (beastLabel) {
-      beastLabel.textContent = `BEAST: ${f.data.beastName.toUpperCase()}`;
+    if (cache.hpPct !== hpPct) {
+      cache.hpPct = hpPct;
+      const fill = document.getElementById(`${prefix}-health-fill`);
+      fill.style.width = `${hpPct}%`;
+      fill.classList.toggle('low', hpPct < 28);
+    }
+    if (cache.trailPct !== trailPct) {
+      cache.trailPct = trailPct;
+      document.getElementById(`${prefix}-health-trail`).style.width = `${trailPct}%`;
     }
 
-    const beastFill = document.getElementById(`${prefix}-beast-fill`);
-    beastFill.style.width = `${f.beastGauge}%`;
-    beastFill.classList.toggle('ready', !f.isBeast && f.beastGauge >= 50);
-    beastFill.classList.toggle('active', f.isBeast);
-
-    const badge = document.getElementById(`${prefix}-form-badge`);
-    badge.textContent = f.isBeast ? `BEAST: ${f.data.beastName.toUpperCase()}` : 'HUMAN';
-    badge.className = `form-badge ${f.isBeast ? 'beast' : 'human'}`;
-
-    const readyTag = document.getElementById(`${prefix}-beast-ready`);
-    readyTag.classList.toggle('hidden', f.isBeast || f.beastGauge < 50);
-
-    const comboEl = document.getElementById(`${prefix}-combo`);
-    if (f.comboCount >= 2 && f.comboDisplayTimer > 0) {
-      comboEl.textContent = `${f.comboCount} HIT COMBO!`;
-      comboEl.classList.remove('hidden');
-    } else {
-      comboEl.classList.add('hidden');
+    if (cache.beastName !== f.data.beastName) {
+      cache.beastName = f.data.beastName;
+      const beastLabel = document.getElementById(`${prefix}-beast-label`);
+      if (beastLabel) {
+        beastLabel.textContent = `BEAST: ${f.data.beastName.toUpperCase()}`;
+      }
     }
 
-    const pips = document.getElementById(`${prefix}-rounds`).children;
-    for (let i = 0; i < pips.length; i++) {
-      pips[i].classList.toggle('won', i < f.roundsWon);
+    const beastRound = Math.round(f.beastGauge * 10) / 10;
+    const ready = !f.isBeast && f.beastGauge >= 50;
+    if (cache.beastRound !== beastRound || cache.isBeast !== f.isBeast) {
+      cache.beastRound = beastRound;
+      const beastFill = document.getElementById(`${prefix}-beast-fill`);
+      beastFill.style.width = `${beastRound}%`;
+      beastFill.classList.toggle('ready', ready);
+      beastFill.classList.toggle('active', f.isBeast);
+    }
+
+    if (cache.isBeast !== f.isBeast || cache.beastNameBadge !== f.data.beastName) {
+      cache.isBeast = f.isBeast;
+      cache.beastNameBadge = f.data.beastName;
+      const badge = document.getElementById(`${prefix}-form-badge`);
+      badge.textContent = f.isBeast ? `BEAST: ${f.data.beastName.toUpperCase()}` : 'HUMAN';
+      badge.className = `form-badge ${f.isBeast ? 'beast' : 'human'}`;
+    }
+
+    if (cache.ready !== ready) {
+      cache.ready = ready;
+      document.getElementById(`${prefix}-beast-ready`).classList.toggle('hidden', !ready);
+    }
+
+    const showCombo = f.comboCount >= 2 && f.comboDisplayTimer > 0;
+    const comboKey = showCombo ? f.comboCount : 0;
+    if (cache.comboKey !== comboKey) {
+      cache.comboKey = comboKey;
+      const comboEl = document.getElementById(`${prefix}-combo`);
+      if (showCombo) {
+        comboEl.textContent = `${f.comboCount} HIT COMBO!`;
+        comboEl.classList.remove('hidden');
+      } else {
+        comboEl.classList.add('hidden');
+      }
+    }
+
+    if (cache.roundsWon !== f.roundsWon) {
+      cache.roundsWon = f.roundsWon;
+      const pips = document.getElementById(`${prefix}-rounds`).children;
+      for (let i = 0; i < pips.length; i++) {
+        pips[i].classList.toggle('won', i < f.roundsWon);
+      }
     }
   }
 
@@ -2528,8 +2570,8 @@
     updateHUD();
   }
 
-  // Main Loop: PC runs 1 step/rAF (untouched); Mobile uses smooth 60 FPS delta-time + cached stage
-  const MOBILE_STEP_MS = 1000 / 60;
+  // Main Loop: PC runs 1 step/rAF (untouched); Mobile uses snappy 80Hz delta-time + cached stage + zero HUD thrashing
+  const MOBILE_STEP_MS = 1000 / 80;
   let mobileLastTime = performance.now();
   let mobileAccumulator = 0;
 
@@ -2612,7 +2654,8 @@
       } else {
         if (gameMode === 'FIGHT') {
           timerTicks++;
-          if (timerTicks >= 60) {
+          const ticksPerSec = isMobileDevice() ? 80 : 60;
+          if (timerTicks >= ticksPerSec) {
             timerTicks = 0;
             roundTimer = Math.max(0, roundTimer - 1);
             if (roundTimer === 0) handleTimeOver();

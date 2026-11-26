@@ -507,13 +507,17 @@ function drawSpriteFighter(
   ctx.fill();
   ctx.restore();
 
-  // Ganesha subtle warm spiritual aura in Beast form
+  // Ganesha subtle warm spiritual aura in Beast form (skip expensive radial gradient on mobile)
   if (isBeast && data.id === 'dinesh') {
     const auraR = 84 + Math.sin(globalTime * 0.1) * 5;
-    const grad = ctx.createRadialGradient(0, -drawH * 0.52, 12, 0, -drawH * 0.52, auraR);
-    grad.addColorStop(0, 'rgba(201, 158, 56, 0.32)');
-    grad.addColorStop(1, 'rgba(166, 94, 30, 0)');
-    ctx.fillStyle = grad;
+    if (window.innerWidth <= 900) {
+      ctx.fillStyle = 'rgba(201, 158, 56, 0.14)';
+    } else {
+      const grad = ctx.createRadialGradient(0, -drawH * 0.52, 12, 0, -drawH * 0.52, auraR);
+      grad.addColorStop(0, 'rgba(201, 158, 56, 0.32)');
+      grad.addColorStop(1, 'rgba(166, 94, 30, 0)');
+      ctx.fillStyle = grad;
+    }
     ctx.beginPath();
     ctx.arc(0, -drawH * 0.52, auraR, 0, Math.PI * 2);
     ctx.fill();
