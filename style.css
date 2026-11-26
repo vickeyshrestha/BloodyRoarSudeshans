@@ -1657,6 +1657,9 @@ kbd {
   .hud-controls-bar {
     display: none;
   }
+  #btn-mute {
+    display: none !important;
+  }
 }
 
 /* Responsive Fullscreen & Mobile Layout */

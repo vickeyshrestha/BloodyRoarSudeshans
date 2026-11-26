@@ -258,8 +258,32 @@
     keysHeld.delete(normalizeCode(e));
   });
 
+  function isMobileDevice() {
+    return window.matchMedia('(hover: none) and (pointer: coarse)').matches || window.innerWidth <= 900;
+  }
+
+  function enterMobileFullscreenLandscape() {
+    if (!isMobileDevice()) return;
+    const target = document.documentElement;
+    const req = target.requestFullscreen || target.webkitRequestFullscreen;
+    if (req && !document.fullscreenElement) {
+      Promise.resolve(req.call(target))
+        .then(() => {
+          if (screen.orientation && screen.orientation.lock) {
+            screen.orientation.lock('landscape').catch(() => {});
+          }
+        })
+        .catch(() => {});
+    } else if (screen.orientation && screen.orientation.lock) {
+      screen.orientation.lock('landscape').catch(() => {});
+    }
+  }
+
   // Button Events
-  btnStart.addEventListener('click', goToMenu);
+  btnStart.addEventListener('click', () => {
+    enterMobileFullscreenLandscape();
+    goToMenu();
+  });
   btnModeArcade.addEventListener('click', () => {
     syncPlayerNameFromInput(globalPlayerNameInput.value);
     onlineRole = null;
@@ -1966,14 +1990,19 @@
         const dy = (STAGE.height - dh) * 0.25;
         ctx.drawImage(bg, dx, dy, dw, dh);
       } else {
-        // Portrait photo: blurred cover backdrop + sharp uncropped contain center
-        ctx.save();
-        ctx.filter = 'blur(14px) brightness(0.42)';
-        const coverScale = Math.max(STAGE.width / iw, STAGE.height / ih);
-        const cw = iw * coverScale;
-        const ch = ih * coverScale;
-        ctx.drawImage(bg, (STAGE.width - cw) / 2, (STAGE.height - ch) / 2, cw, ch);
-        ctx.restore();
+        // Portrait photo: skip expensive GPU blur on mobile for 60 FPS performance
+        if (!isMobileDevice()) {
+          ctx.save();
+          ctx.filter = 'blur(14px) brightness(0.42)';
+          const coverScale = Math.max(STAGE.width / iw, STAGE.height / ih);
+          const cw = iw * coverScale;
+          const ch = ih * coverScale;
+          ctx.drawImage(bg, (STAGE.width - cw) / 2, (STAGE.height - ch) / 2, cw, ch);
+          ctx.restore();
+        } else {
+          ctx.fillStyle = '#0b0d14';
+          ctx.fillRect(0, 0, STAGE.width, STAGE.floorTopY);
+        }
 
         const containScale = Math.min(STAGE.width / iw, STAGE.height / ih);
         const dw = iw * containScale;
@@ -2212,11 +2241,14 @@
     updateHUD();
   }
 
-  // Main 60 FPS Loop
-  function loop() {
+  // Fixed-timestep 60 FPS simulation so mobile (30Hz) and high-refresh (120Hz) run at identical speed
+  const FIXED_STEP_MS = 1000 / 60;
+  let lastFrameTime = performance.now();
+  let stepAccumulator = 0;
+
+  function stepSimulation() {
     if (isPaused) {
       keysJustPressed.clear();
-      requestAnimationFrame(loop);
       return;
     }
     globalTime++;
@@ -2323,6 +2355,19 @@
       }
     }
 
+    keysJustPressed.clear();
+  }
+
+  function loop(now) {
+    const dt = Math.min(100, Math.max(0, (now || performance.now()) - lastFrameTime));
+    lastFrameTime = now || performance.now();
+    stepAccumulator += dt;
+
+    while (stepAccumulator >= FIXED_STEP_MS) {
+      stepSimulation();
+      stepAccumulator -= FIXED_STEP_MS;
+    }
+
     ctx.save();
     if (shakeFrames > 0) {
       shakeFrames--;
@@ -2351,7 +2396,6 @@
     }
     ctx.restore();
 
-    keysJustPressed.clear();
     requestAnimationFrame(loop);
   }
 
