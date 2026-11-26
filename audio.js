@@ -6,6 +6,8 @@ const SoundFX = (() => {
   let muted = false;
   let bgm = null;
   let bgmStarted = false;
+  let bossBgm = null;
+  let bossBgmActive = false;
 
   function initBGM() {
     if (!bgm) {
@@ -15,6 +17,16 @@ const SoundFX = (() => {
       bgm.muted = muted;
     }
     return bgm;
+  }
+
+  function initBossBGM() {
+    if (!bossBgm) {
+      bossBgm = new Audio('assets/boss_bgm.mp3');
+      bossBgm.loop = true;
+      bossBgm.volume = 0.42;
+      bossBgm.muted = muted;
+    }
+    return bossBgm;
   }
 
   function ensureContext() {
@@ -225,6 +237,14 @@ const SoundFX = (() => {
       return muted;
     },
     startBGM() {
+      if (bossBgmActive) {
+        const bossMusic = initBossBGM();
+        bossMusic.muted = muted;
+        if (bossMusic.paused) {
+          bossMusic.play().catch(() => {});
+        }
+        return;
+      }
       const music = initBGM();
       music.muted = muted;
       if (!bgmStarted || music.paused) {
@@ -233,12 +253,37 @@ const SoundFX = (() => {
         }).catch(() => {});
       }
     },
+    startBossBGM() {
+      bossBgmActive = true;
+      if (bgm && !bgm.paused) {
+        bgm.pause();
+      }
+      const bossMusic = initBossBGM();
+      bossMusic.muted = muted;
+      bossMusic.currentTime = 0;
+      bossMusic.play().catch(() => {});
+    },
+    stopBossBGM() {
+      if (!bossBgmActive) return;
+      bossBgmActive = false;
+      if (bossBgm) {
+        bossBgm.pause();
+        bossBgm.currentTime = 0;
+      }
+      this.startBGM();
+    },
     toggleMute() {
       muted = !muted;
       if (bgm) {
         bgm.muted = muted;
-        if (!muted && bgm.paused && bgmStarted) {
+        if (!muted && !bossBgmActive && bgm.paused && bgmStarted) {
           bgm.play().catch(() => {});
+        }
+      }
+      if (bossBgm) {
+        bossBgm.muted = muted;
+        if (!muted && bossBgmActive && bossBgm.paused) {
+          bossBgm.play().catch(() => {});
         }
       }
       return muted;

@@ -596,6 +596,7 @@
   }
 
   function goToMenu() {
+    SoundFX.stopBossBGM();
     SoundFX.startBGM();
     SoundFX.playMenuConfirm();
     isPaused = false;
@@ -1042,6 +1043,14 @@
     pickRandomStageBackground();
     p1 = createFighterState(f1Data, 260, 1, false);
     p2 = createFighterState(f2Data, 700, -1, !onlineRole);
+    if (!onlineRole && arcadeStage === 5) {
+      p2.maxHealth *= 3;
+      p2.health = p2.maxHealth;
+      p2.trailHealth = p2.maxHealth;
+      SoundFX.startBossBGM();
+    } else {
+      SoundFX.stopBossBGM();
+    }
     roundNumber = 1;
     if (onlineRole) liveMatchScore = 0;
 
@@ -1421,7 +1430,11 @@
       transform: false
     };
 
-    const diff = gameOptions.difficulty || 'easy';
+    let diff = gameOptions.difficulty || 'easy';
+    if (!onlineRole && arcadeStage === 5 && cpu === p2) {
+      const bossTier = { easy: 'medium', normal: 'hard', medium: 'hard', hard: 'brutal', brutal: 'brutal' };
+      diff = bossTier[diff] || 'medium';
+    }
     const diffCfg = {
       easy: { minCd: 24, cdVar: 19, react: 12, blockProb: 0.25, aggro: 0.52 },
       medium: { minCd: 16, cdVar: 13, react: 8, blockProb: 0.42, aggro: 0.66 },
@@ -1674,6 +1687,7 @@
           gameMode = 'POST_MATCH_BANNER';
           showBanner('YOU WIN!', 'TOURNAMENT CHAMPION!', 240);
           postMatchCallback = () => {
+            SoundFX.stopBossBGM();
             hudEl.classList.add('hidden');
             standaloneCredits = false;
             btnCreditsRematch.textContent = 'REMATCH';
@@ -1696,6 +1710,7 @@
           gameMode = 'POST_MATCH_BANNER';
           showBanner('YOU LOSE!', `${p2.data.name.toUpperCase()} TAKES THE MATCH`, 240);
           postMatchCallback = () => {
+            SoundFX.stopBossBGM();
             hudEl.classList.add('hidden');
             showMatchEndScreen(
               'GAME OVER',
