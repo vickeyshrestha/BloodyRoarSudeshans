@@ -2256,8 +2256,8 @@
     updateHUD();
   }
 
-  // Fixed-timestep 60 FPS simulation so mobile (30Hz) and high-refresh (120Hz) run at identical speed
-  const FIXED_STEP_MS = 1000 / 60;
+  // Fixed-timestep 90 FPS simulation so mobile (30Hz/60Hz) and desktop (60Hz/120Hz+) run at identical snappy speed
+  const FIXED_STEP_MS = 1000 / 90;
   let lastFrameTime = performance.now();
   let stepAccumulator = 0;
 
@@ -2341,7 +2341,7 @@
       } else {
         if (gameMode === 'FIGHT') {
           timerTicks++;
-          if (timerTicks >= 60) {
+          if (timerTicks >= 90) {
             timerTicks = 0;
             roundTimer = Math.max(0, roundTimer - 1);
             if (roundTimer === 0) handleTimeOver();
