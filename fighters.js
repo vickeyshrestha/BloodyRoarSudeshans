@@ -159,7 +159,7 @@ const FIGHTERS = [
     id: 'sunil',
     name: 'Sunil Thapa',
     beastName: 'Billaa - The Weird Cat',
-    portraitSrc: 'assets/sprites/sunil_human.png',
+    portraitSrc: 'assets/Sunil.jpg',
     desc: 'Bowler-hatted trenchcoat phantom who morphs into Billaa, the eerie shadow cat.',
     stats: { speed: 9, power: 8, range: 7, health: 100, jumpForce: -14.2, scale: 1.0 },
     palette: {
