@@ -364,9 +364,15 @@ function drawFighter(ctx, f, globalTime) {
   if (idleImg) {
     // Select action sprite during Active & early Recovery phases, or 2-frame Walk stride
     let activeImg = idleImg;
-    if (f.state === 'punch' && f.stateFrame >= 6 && f.stateFrame < 17) {
+    if (
+      (f.state === 'punch' && f.stateFrame >= 6 && f.stateFrame < 17) ||
+      (f.state === 'low_punch' && f.stateFrame >= 5 && f.stateFrame < 15)
+    ) {
       activeImg = getFighterSprite(f.data.id, f.isBeast, '_punch') || idleImg;
-    } else if (f.state === 'kick' && f.stateFrame >= 10 && f.stateFrame < 25) {
+    } else if (
+      (f.state === 'kick' && f.stateFrame >= 10 && f.stateFrame < 25) ||
+      (f.state === 'low_kick' && f.stateFrame >= 8 && f.stateFrame < 22)
+    ) {
       activeImg = getFighterSprite(f.data.id, f.isBeast, '_kick') || idleImg;
     } else if (f.state === 'walk' && Math.floor((f.walkFrame || 0) / 9) % 2 === 1) {
       activeImg = getFighterSprite(f.data.id, f.isBeast, '_walk') || idleImg;
@@ -460,42 +466,56 @@ function drawSpriteFighter(ctx, f, img, globalTime) {
       sx = 0.96;
       rot = 2.5 * deg;
       break;
-    case 'punch': {
+    case 'punch':
+    case 'low_punch': {
+      const isLow = f.state === 'low_punch';
+      const su = isLow ? 5 : punchStartup;
+      const act = isLow ? 5 : punchActive;
+      const rec = isLow ? 8 : punchRecovery;
       const fr = f.stateFrame;
-      if (fr < punchStartup) {
-        // Startup: Idle sprite with subtle anticipation lean back (-5px X)
-        const p = fr / punchStartup;
+      if (fr < su) {
+        const p = fr / su;
         offsetX = -5 * p;
         rot = -3 * deg * p;
-      } else if (fr < punchStartup + punchActive) {
-        // Active: _punch.png with crisp forward step (+12px toward opponent)
+      } else if (fr < su + act) {
         offsetX = 12;
-        rot = 2 * deg;
+        rot = (isLow ? 4 : 2) * deg;
       } else {
-        // Recovery: brief hold then smooth return to Idle
-        const p = Math.min(1, (fr - punchStartup - punchActive) / punchRecovery);
+        const p = Math.min(1, (fr - su - act) / rec);
         offsetX = 12 * (1 - p);
-        rot = 2 * deg * (1 - p);
+        rot = (isLow ? 4 : 2) * deg * (1 - p);
+      }
+      if (isLow) {
+        sy *= 0.78;
+        sx *= 1.08;
+        offsetY += 4;
       }
       break;
     }
-    case 'kick': {
+    case 'kick':
+    case 'low_kick': {
+      const isLow = f.state === 'low_kick';
+      const su = isLow ? 8 : kickStartup;
+      const act = isLow ? 8 : kickActive;
+      const rec = isLow ? 13 : kickRecovery;
       const fr = f.stateFrame;
-      if (fr < kickStartup) {
-        // Startup: Idle sprite with anticipation lean back (-5px X)
-        const p = fr / kickStartup;
+      if (fr < su) {
+        const p = fr / su;
         offsetX = -5 * p;
         rot = -4 * deg * p;
         sy = 1 - 0.04 * p;
-      } else if (fr < kickStartup + kickActive) {
-        // Active: _kick.png with crisp forward step (+12px toward opponent)
+      } else if (fr < su + act) {
         offsetX = 12;
-        rot = -2 * deg;
+        rot = (isLow ? 6 : -2) * deg;
       } else {
-        // Recovery: brief hold then smooth return to Idle
-        const p = Math.min(1, (fr - kickStartup - kickActive) / kickRecovery);
+        const p = Math.min(1, (fr - su - act) / rec);
         offsetX = 12 * (1 - p);
-        rot = -2 * deg * (1 - p);
+        rot = (isLow ? 6 : -2) * deg * (1 - p);
+      }
+      if (isLow) {
+        sy *= 0.72;
+        sx *= 1.12;
+        offsetY += 6;
       }
       break;
     }

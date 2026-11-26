@@ -1231,6 +1231,32 @@
         heavy: false
       };
     }
+    if (type === 'low_punch') {
+      return {
+        startup: 5,
+        active: 5,
+        recovery: 8,
+        damage: Math.max(1, Math.round((4 + pwr * 0.45) * formMult)),
+        range: 60 + rng * 4.2,
+        height: 44,
+        knockback: 3.5,
+        hitstun: 14,
+        heavy: false
+      };
+    }
+    if (type === 'low_kick') {
+      return {
+        startup: 8,
+        active: 8,
+        recovery: 13,
+        damage: Math.max(2, Math.round((8 + pwr * 0.85) * formMult)),
+        range: 86 + rng * 5.4,
+        height: 48,
+        knockback: fighter.data.id === 'munna' ? 9.5 : 7.5,
+        hitstun: 22,
+        heavy: true
+      };
+    }
     return {
       startup: 10,
       active: 8,
@@ -1301,7 +1327,12 @@
       return;
     }
 
-    if (f.state === 'punch' || f.state === 'kick') {
+    if (
+      f.state === 'punch' ||
+      f.state === 'kick' ||
+      f.state === 'low_punch' ||
+      f.state === 'low_kick'
+    ) {
       const spec = getAttackSpec(f, f.state);
       f.stateFrame++;
 
@@ -1313,7 +1344,7 @@
         checkAttackHit(f, opponent, spec);
       }
 
-      if (!f.isCPU && f.state === 'punch' && keysJustPressed.has('KeyS')) {
+      if (!f.isCPU && (f.state === 'punch' || f.state === 'low_punch') && keysJustPressed.has('KeyS')) {
         f.comboQueued = true;
       }
 
@@ -1321,7 +1352,7 @@
       if (f.stateFrame >= total) {
         if (f.comboQueued) {
           f.comboQueued = false;
-          f.state = 'kick';
+          f.state = f.state === 'low_punch' ? 'low_kick' : 'kick';
           f.stateFrame = 0;
           f.hasHitThisAttack = false;
           SoundFX.playKick();
@@ -1385,7 +1416,12 @@
       return;
     }
 
-    const opponentAttacking = opponent && (opponent.state === 'punch' || opponent.state === 'kick');
+    const opponentAttacking =
+      opponent &&
+      (opponent.state === 'punch' ||
+        opponent.state === 'kick' ||
+        opponent.state === 'low_punch' ||
+        opponent.state === 'low_kick');
     if (holdingBack && grounded && opponentAttacking) {
       f.state = 'block';
       f.vx = 0;
@@ -1393,7 +1429,7 @@
     }
 
     if (punch) {
-      f.state = 'punch';
+      f.state = down && grounded ? 'low_punch' : 'punch';
       f.stateFrame = 0;
       f.hasHitThisAttack = false;
       f.comboQueued = false;
@@ -1404,7 +1440,7 @@
     }
 
     if (kick) {
-      f.state = 'kick';
+      f.state = down && grounded ? 'low_kick' : 'kick';
       f.stateFrame = 0;
       f.hasHitThisAttack = false;
       if (grounded) f.vx *= 0.2;
@@ -1484,7 +1520,11 @@
     const dist = Math.abs(dx);
     const dirToPlayer = dx >= 0 ? 1 : -1;
 
-    const playerAttacking = player.state === 'punch' || player.state === 'kick';
+    const playerAttacking =
+      player.state === 'punch' ||
+      player.state === 'kick' ||
+      player.state === 'low_punch' ||
+      player.state === 'low_kick';
     if (playerAttacking && dist < 115) {
       cpu.aiReactionTimer++;
       if (cpu.aiReactionTimer >= diffCfg.react && cpu.aiAction === 'block_ready') {
@@ -1558,12 +1598,20 @@
   function getHurtbox(f) {
     const s = getFighterScale(f);
     const w = 68 * s;
-    const h = (f.state === 'crouch' ? 120 : 192) * s;
+    const isLow = f.state === 'crouch' || f.state === 'low_punch' || f.state === 'low_kick';
+    const h = (isLow ? 120 : 192) * s;
     return { x: f.x - w / 2, y: f.y - h, w, h };
   }
 
   function getActiveHitbox(f) {
-    if (f.state !== 'punch' && f.state !== 'kick') return null;
+    if (
+      f.state !== 'punch' &&
+      f.state !== 'kick' &&
+      f.state !== 'low_punch' &&
+      f.state !== 'low_kick'
+    ) {
+      return null;
+    }
     const spec = getAttackSpec(f, f.state);
     if (f.stateFrame < spec.startup || f.stateFrame >= spec.startup + spec.active) {
       return null;
@@ -1572,7 +1620,10 @@
     const w = spec.range;
     const h = spec.height;
     const x = f.facing === 1 ? f.x + 20 * s : f.x - 20 * s - w;
-    const y = f.state === 'kick' ? f.y - 142 * s : f.y - 166 * s;
+    let y = f.y - 166 * s;
+    if (f.state === 'kick') y = f.y - 142 * s;
+    else if (f.state === 'low_punch') y = f.y - 90 * s;
+    else if (f.state === 'low_kick') y = f.y - 56 * s;
     return { x, y, w, h };
   }
 
