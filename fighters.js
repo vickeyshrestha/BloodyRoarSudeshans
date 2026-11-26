@@ -167,8 +167,15 @@ function preloadAllSprites() {
     });
   });
 
-  // Custom crouching & low-attack sprites for Vickey (human form)
-  ['vickey_human_crouch', 'vickey_human_low_punch', 'vickey_human_low_kick'].forEach(loadSpriteKey);
+  // Custom crouching & low-attack sprites for Vickey (human & beast forms)
+  [
+    'vickey_human_crouch',
+    'vickey_human_low_punch',
+    'vickey_human_low_kick',
+    'vickey_beast_crouch',
+    'vickey_beast_low_punch',
+    'vickey_beast_low_kick'
+  ].forEach(loadSpriteKey);
 }
 
 preloadAllSprites();
