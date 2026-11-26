@@ -413,24 +413,62 @@
     });
   }
 
-  // Mobile Touch Controls Binding
+  // Mobile Touch Controls Binding (pointer-ID tracked so buttons never stick)
+  const activeTouchPointers = new Map();
+
+  function releaseTouchPointer(pointerId) {
+    const entry = activeTouchPointers.get(pointerId);
+    if (!entry) return;
+    activeTouchPointers.delete(pointerId);
+    const { code, btn } = entry;
+    let stillHeld = false;
+    for (const other of activeTouchPointers.values()) {
+      if (other.code === code) {
+        stillHeld = true;
+        break;
+      }
+    }
+    if (!stillHeld) {
+      keysHeld.delete(code);
+      btn.classList.remove('pressed');
+    }
+  }
+
+  function clearAllTouchPointers() {
+    for (const { code, btn } of activeTouchPointers.values()) {
+      keysHeld.delete(code);
+      btn.classList.remove('pressed');
+    }
+    activeTouchPointers.clear();
+  }
+
   document.querySelectorAll('.touch-btn[data-key]').forEach((btn) => {
     const code = btn.dataset.key;
-    const press = (e) => {
+    btn.addEventListener('contextmenu', (e) => e.preventDefault());
+    btn.addEventListener('pointerdown', (e) => {
       e.preventDefault();
+      try {
+        btn.setPointerCapture(e.pointerId);
+      } catch (_) {}
+      activeTouchPointers.set(e.pointerId, { code, btn });
       if (!keysHeld.has(code)) keysJustPressed.add(code);
       keysHeld.add(code);
       btn.classList.add('pressed');
-    };
-    const release = (e) => {
+    });
+    const onEnd = (e) => {
       e.preventDefault();
-      keysHeld.delete(code);
-      btn.classList.remove('pressed');
+      releaseTouchPointer(e.pointerId);
     };
-    btn.addEventListener('pointerdown', press);
-    btn.addEventListener('pointerup', release);
-    btn.addEventListener('pointercancel', release);
-    btn.addEventListener('pointerleave', release);
+    btn.addEventListener('pointerup', onEnd);
+    btn.addEventListener('pointercancel', onEnd);
+    btn.addEventListener('lostpointercapture', onEnd);
+  });
+
+  window.addEventListener('pointerup', (e) => releaseTouchPointer(e.pointerId));
+  window.addEventListener('pointercancel', (e) => releaseTouchPointer(e.pointerId));
+  window.addEventListener('blur', clearAllTouchPointers);
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) clearAllTouchPointers();
   });
 
   // Build Character Select Cards
@@ -1117,7 +1155,7 @@
     timerTicks = 0;
     gameMode = 'ROUND_INTRO';
     introPhase = 1;
-    introTimer = 240; // 4 seconds hold for Round 1 / Round 2 / Final Round
+    introTimer = 360; // 6 seconds hold for Round 1 / Round 2 / Final Round
 
     showOnlyScreen(null);
     hudEl.classList.remove('hidden');
@@ -1130,7 +1168,7 @@
       : arcadeStage === 5
         ? 'FINAL STAGE'
         : `STAGE ${arcadeStage}`;
-    showBanner(roundTitle, subTitle, 240);
+    showBanner(roundTitle, subTitle, 360);
     SoundFX.playRoundAnnounce(roundNumber);
   }
 
@@ -1307,7 +1345,6 @@
     let down = false;
     let punch = false;
     let kick = false;
-    let block = false;
     let transform = false;
 
     if (!f.isCPU && !(onlineRole === 'host' && f === p2)) {
@@ -1315,7 +1352,6 @@
       right = keysHeld.has('ArrowRight');
       up = keysHeld.has('ArrowUp');
       down = keysHeld.has('ArrowDown');
-      block = keysHeld.has('KeyZ');
       punch = keysJustPressed.has('KeyA');
       kick = keysJustPressed.has('KeyS');
       transform = keysJustPressed.has('KeyX');
@@ -1324,7 +1360,6 @@
       right = remoteInput.right;
       up = remoteInput.up;
       down = remoteInput.down;
-      block = remoteInput.block;
       punch = remoteInput.punch;
       kick = remoteInput.kick;
       transform = remoteInput.transform;
@@ -1337,18 +1372,21 @@
       right = ai.right;
       up = ai.up;
       down = ai.down;
-      block = ai.block;
       punch = ai.punch;
       kick = ai.kick;
       transform = ai.transform;
     }
+
+    const holdingBack = (f.facing === 1 && left && !right) || (f.facing === -1 && right && !left);
+    f.holdingBack = holdingBack;
 
     if (transform && f.beastGauge >= 50 && !f.isBeast && grounded) {
       triggerTransform(f, opponent);
       return;
     }
 
-    if (block && grounded) {
+    const opponentAttacking = opponent && (opponent.state === 'punch' || opponent.state === 'kick');
+    if (holdingBack && grounded && opponentAttacking) {
       f.state = 'block';
       f.vx = 0;
       return;
@@ -1450,7 +1488,8 @@
     if (playerAttacking && dist < 115) {
       cpu.aiReactionTimer++;
       if (cpu.aiReactionTimer >= diffCfg.react && cpu.aiAction === 'block_ready') {
-        out.block = true;
+        out.left = cpu.facing === 1;
+        out.right = cpu.facing === -1;
         return out;
       }
       if (cpu.aiReactionTimer === diffCfg.react) {
@@ -1553,7 +1592,14 @@
     const impactX = Math.max(hurtbox.x, Math.min(hurtbox.x + hurtbox.w, hitbox.x + (attacker.facing === 1 ? hitbox.w * 0.75 : hitbox.w * 0.25)));
     const impactY = hitbox.y + hitbox.h * 0.5;
 
-    if (defender.state === 'block') {
+    const defenderCanBlock =
+      defender.state === 'block' ||
+      (defender.holdingBack &&
+        defender.y >= STAGE.groundY - 1 &&
+        (defender.state === 'idle' || defender.state === 'walk' || defender.state === 'crouch'));
+    if (defenderCanBlock) {
+      defender.state = 'block';
+      defender.vx = 0;
       const chipDmg = Math.max(1, Math.round(spec.damage * 0.25));
       defender.health = Math.max(0, defender.health - chipDmg);
       defender.beastGauge = Math.min(100, defender.beastGauge + 4.5);
@@ -1941,7 +1987,7 @@
     updateFighterHUD('p1', p1);
     updateFighterHUD('p2', p2);
 
-    const keyMap = { KeyA: 'hud-key-A', KeyS: 'hud-key-S', KeyZ: 'hud-key-Z', KeyX: 'hud-key-X' };
+    const keyMap = { KeyA: 'hud-key-A', KeyS: 'hud-key-S', KeyX: 'hud-key-X' };
     Object.entries(keyMap).forEach(([code, elId]) => {
       const el = document.getElementById(elId);
       if (el) el.classList.toggle('active', keysHeld.has(code));
@@ -2321,7 +2367,6 @@
           right: keysHeld.has('ArrowRight'),
           up: keysHeld.has('ArrowUp'),
           down: keysHeld.has('ArrowDown'),
-          block: keysHeld.has('KeyZ'),
           punch: keysJustPressed.has('KeyA'),
           kick: keysJustPressed.has('KeyS'),
           transform: keysJustPressed.has('KeyX')
