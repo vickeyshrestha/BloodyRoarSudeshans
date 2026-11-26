@@ -154,6 +154,28 @@ const FIGHTERS = [
       beastHorn: '#d6a347',
       eye: '#f2c12e'
     }
+  },
+  {
+    id: 'sunil',
+    name: 'Sunil Thapa',
+    beastName: 'Billaa - The Weird Cat',
+    portraitSrc: 'assets/sprites/sunil_human.png',
+    desc: 'Bowler-hatted trenchcoat phantom who morphs into Billaa, the eerie shadow cat.',
+    stats: { speed: 9, power: 8, range: 7, health: 100, jumpForce: -14.2, scale: 1.0 },
+    palette: {
+      skin: '#b58465',
+      skinShadow: '#785038',
+      hair: '#14131a',
+      top: '#38224a',
+      topShadow: '#1e1029',
+      pants: '#1a1b22',
+      accent: '#9b5de5',
+      beastMain: '#2b2d38',
+      beastDark: '#14151c',
+      beastLight: '#52576b',
+      beastHorn: '#d9d9e3',
+      eye: '#e0e6ff'
+    }
   }
 ];
 
@@ -208,7 +230,13 @@ function preloadAllSprites() {
     'adheesh_human_low_kick',
     'adheesh_beast_crouch',
     'adheesh_beast_low_punch',
-    'adheesh_beast_low_kick'
+    'adheesh_beast_low_kick',
+    'sunil_human_crouch',
+    'sunil_human_low_punch',
+    'sunil_human_low_kick',
+    'sunil_beast_crouch',
+    'sunil_beast_low_punch',
+    'sunil_beast_low_kick'
   ].forEach(loadSpriteKey);
 }
 
