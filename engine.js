@@ -28,26 +28,35 @@
     img.src = `assets/sprites/npc_${n}.png`;
     return img;
   });
+  const NPC_HOODIE_FRAMES = [1, 2, 3].map((n) => {
+    const img = new Image();
+    img.src = `assets/sprites/npc_hoodie_${n}.png`;
+    return img;
+  });
   let bgSpectators = [];
 
   function spawnBackgroundSpectators() {
     bgSpectators = [];
-    const count = isMobileDevice() ? 3 : 4 + Math.floor(Math.random() * 2);
-    const deck = [0, 1, 2, 3, 4];
+    const maxCount = isMobileDevice() ? 3 : 6;
+    const minCount = isMobileDevice() ? 2 : 3;
+    const count = minCount + Math.floor(Math.random() * (maxCount - minCount + 1));
+    const deck = [0, 1, 2, 3, 4, 'hoodie'];
     for (let i = deck.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [deck[i], deck[j]] = [deck[j], deck[i]];
     }
     const slotW = (STAGE.width - 150) / count;
     for (let i = 0; i < count; i++) {
-      const npcIdx = deck[i % deck.length];
+      const pick = Math.random() < 0.25 ? deck[Math.floor(Math.random() * deck.length)] : deck[i % deck.length];
+      const isHoodie = pick === 'hoodie';
       const x = 75 + i * slotW + Math.random() * Math.max(20, slotW - 50);
       bgSpectators.push({
         x,
         y: STAGE.floorTopY + 10 + Math.random() * 8,
-        imgIdx: npcIdx,
-        targetH: (npcIdx === 0 ? 148 : 136) + Math.random() * 10,
-        facing: x < STAGE.width / 2 ? 1 : -1,
+        imgIdx: isHoodie ? 0 : pick,
+        isHoodie,
+        targetH: (isHoodie ? 144 : (pick === 0 ? 148 : 136)) + Math.random() * 10,
+        facing: Math.random() < 0.7 ? (x < STAGE.width / 2 ? 1 : -1) : (Math.random() < 0.5 ? 1 : -1),
         phase: Math.random() * Math.PI * 2,
         speed: 0.032 + Math.random() * 0.015
       });
@@ -2454,20 +2463,33 @@
     const speedMult = excited ? 1.55 : 1.0;
 
     ctx.save();
+    const hoodieCycle = [0, 1, 2, 1];
     for (let i = 0; i < bgSpectators.length; i++) {
       const sp = bgSpectators[i];
-      const img = NPC_SPECTATOR_IMAGES[sp.imgIdx];
-      if (!img || !img.complete || img.naturalWidth <= 0) continue;
+      let img;
+      let bounceY = 0;
+      let sx = 1;
+      let sy = 1;
 
-      const t = globalTime * sp.speed * speedMult + sp.phase;
-      const isActiveCheer = sp.imgIdx === 0 || sp.imgIdx === 2; // cheering fan or pointing spectator
-      const bounceY = isActiveCheer
-        ? -Math.abs(Math.sin(t)) * (excited ? 7 : 3.5)
-        : excited
-          ? -Math.abs(Math.sin(t)) * 3.5
-          : 0;
-      const sy = 1 + Math.sin(t * 1.3) * (isActiveCheer ? 0.028 : 0.016);
-      const sx = 1 - Math.sin(t * 1.3) * 0.01;
+      if (sp.isHoodie) {
+        const frameStep = Math.floor((globalTime * (excited ? 0.14 : 0.08) + sp.phase) % hoodieCycle.length);
+        const frameIdx = hoodieCycle[frameStep];
+        img = NPC_HOODIE_FRAMES[frameIdx];
+        bounceY = frameIdx === 1 ? -8 : 0;
+      } else {
+        img = NPC_SPECTATOR_IMAGES[sp.imgIdx];
+        const t = globalTime * sp.speed * speedMult + sp.phase;
+        const isActiveCheer = sp.imgIdx === 0 || sp.imgIdx === 2; // cheering fan or pointing spectator
+        bounceY = isActiveCheer
+          ? -Math.abs(Math.sin(t)) * (excited ? 7 : 3.5)
+          : excited
+            ? -Math.abs(Math.sin(t)) * 3.5
+            : 0;
+        sy = 1 + Math.sin(t * 1.3) * (isActiveCheer ? 0.028 : 0.016);
+        sx = 1 - Math.sin(t * 1.3) * 0.01;
+      }
+
+      if (!img || !img.complete || img.naturalWidth <= 0) continue;
 
       const aspect = img.naturalWidth / img.naturalHeight;
       const drawH = sp.targetH;
