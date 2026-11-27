@@ -1282,7 +1282,7 @@
     timerTicks = 0;
     gameMode = 'ROUND_INTRO';
     introPhase = 1;
-    introTimer = 360; // 6 seconds hold for Round 1 / Round 2 / Final Round
+    introTimer = 300; // 5 seconds hold for Round 1 / Round 2 / Final Round
 
     showOnlyScreen(null);
     hudEl.classList.remove('hidden');
@@ -1295,7 +1295,7 @@
       : arcadeStage === 5
         ? 'FINAL STAGE'
         : `STAGE ${arcadeStage}`;
-    showBanner(roundTitle, subTitle, 360);
+    showBanner(roundTitle, subTitle, 300);
     SoundFX.playRoundAnnounce(roundNumber);
   }
 

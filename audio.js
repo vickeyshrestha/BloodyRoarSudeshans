@@ -353,10 +353,10 @@ const SoundFX = (() => {
       const key = roundNum === 1 ? '1' : roundNum === 2 ? '2' : 'final';
       const src =
         key === '1'
-          ? 'assets/round1.mp3'
+          ? 'assets/round1.wav'
           : key === '2'
-            ? 'assets/round2.mp3'
-            : 'assets/round_final.mp3';
+            ? 'assets/round2.wav'
+            : 'assets/round_final.wav';
       let snd = roundSounds[key];
       if (!snd) {
         snd = new Audio(src);
