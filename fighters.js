@@ -176,6 +176,28 @@ const FIGHTERS = [
       beastHorn: '#d9d9e3',
       eye: '#e0e6ff'
     }
+  },
+  {
+    id: 'beemal',
+    name: 'Beemal K.C.',
+    beastName: 'Saadhu The Monk',
+    portraitSrc: 'assets/sprites/beemal_human.png',
+    desc: 'Disciplined maroon-clad striker who awakens into Saadhu The Monk with serene power.',
+    stats: { speed: 8, power: 8, range: 7, health: 105, jumpForce: -14.0, scale: 1.0 },
+    palette: {
+      skin: '#b07b58',
+      skinShadow: '#734a30',
+      hair: '#141318',
+      top: '#6b1826',
+      topShadow: '#3d0b14',
+      pants: '#1a263b',
+      accent: '#e07a22',
+      beastMain: '#d16a19',
+      beastDark: '#823b08',
+      beastLight: '#f09543',
+      beastHorn: '#734019',
+      eye: '#ffd166'
+    }
   }
 ];
 
@@ -242,7 +264,13 @@ function preloadAllSprites() {
     'sumit_human_low_kick',
     'sumit_beast_crouch',
     'sumit_beast_low_punch',
-    'sumit_beast_low_kick'
+    'sumit_beast_low_kick',
+    'beemal_human_crouch',
+    'beemal_human_low_punch',
+    'beemal_human_low_kick',
+    'beemal_beast_crouch',
+    'beemal_beast_low_punch',
+    'beemal_beast_low_kick'
   ].forEach(loadSpriteKey);
 }
 
