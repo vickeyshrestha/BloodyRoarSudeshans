@@ -32,6 +32,7 @@ const SoundFX = (() => {
     if (!battleBgm) {
       battleBgm = new Audio('assets/battle_bgm.mp3');
       battleBgm.loop = true;
+      battleBgm.preload = 'auto';
       battleBgm.volume = 0.40;
       battleBgm.muted = muted;
     }
@@ -42,10 +43,37 @@ const SoundFX = (() => {
     if (!bossBgm) {
       bossBgm = new Audio('assets/boss_bgm.mp3');
       bossBgm.loop = true;
+      bossBgm.preload = 'auto';
       bossBgm.volume = 0.42;
       bossBgm.muted = muted;
     }
     return bossBgm;
+  }
+
+  let bgmTracksPrimed = false;
+  function primeAllBgmTracks() {
+    if (bgmTracksPrimed) return;
+    bgmTracksPrimed = true;
+    const tracks = [initBattleBGM(), initBossBGM()];
+    tracks.forEach((tr) => {
+      try {
+        tr.load();
+        const prevVol = tr.volume;
+        tr.volume = 0;
+        const p = tr.play();
+        if (p && typeof p.then === 'function') {
+          p.then(() => {
+            tr.pause();
+            if (tr.readyState > 0 && tr.currentTime > 0) tr.currentTime = 0;
+            tr.volume = prevVol;
+          }).catch(() => {
+            tr.volume = prevVol;
+          });
+        } else {
+          tr.volume = prevVol;
+        }
+      } catch {}
+    });
   }
 
   function ensureContext() {
@@ -256,16 +284,17 @@ const SoundFX = (() => {
       return muted;
     },
     startBGM() {
+      primeAllBgmTracks();
       if (currentBgmMode === 'boss') {
         const bossMusic = initBossBGM();
         bossMusic.muted = muted;
-        if (bossMusic.paused) bossMusic.play().catch(() => {});
+        if (!muted && bossMusic.paused) bossMusic.play().catch(() => {});
         return;
       }
       if (currentBgmMode === 'battle') {
         const battleMusic = initBattleBGM();
         battleMusic.muted = muted;
-        if (battleMusic.paused) battleMusic.play().catch(() => {});
+        if (!muted && battleMusic.paused) battleMusic.play().catch(() => {});
         return;
       }
       const music = initBGM();
@@ -276,18 +305,30 @@ const SoundFX = (() => {
         }).catch(() => {});
       }
     },
+    resumeCurrentBGM() {
+      if (muted) return;
+      if (currentBgmMode === 'boss') {
+        const bossMusic = initBossBGM();
+        bossMusic.muted = false;
+        if (bossMusic.paused) bossMusic.play().catch(() => {});
+      } else if (currentBgmMode === 'battle') {
+        const battleMusic = initBattleBGM();
+        battleMusic.muted = false;
+        if (battleMusic.paused) battleMusic.play().catch(() => {});
+      }
+    },
     startBattleBGM() {
       if (currentBgmMode === 'battle' && battleBgm && !battleBgm.paused) return;
       currentBgmMode = 'battle';
       if (bgm && !bgm.paused) bgm.pause();
       if (bossBgm && !bossBgm.paused) {
         bossBgm.pause();
-        bossBgm.currentTime = 0;
+        if (bossBgm.readyState > 0 && bossBgm.currentTime > 0) bossBgm.currentTime = 0;
       }
       const battleMusic = initBattleBGM();
       battleMusic.muted = muted;
       if (battleMusic.paused) {
-        battleMusic.currentTime = 0;
+        if (battleMusic.readyState > 0 && battleMusic.currentTime > 0) battleMusic.currentTime = 0;
         battleMusic.play().catch(() => {});
       }
     },
@@ -296,7 +337,7 @@ const SoundFX = (() => {
       currentBgmMode = 'menu';
       if (battleBgm) {
         battleBgm.pause();
-        battleBgm.currentTime = 0;
+        if (battleBgm.readyState > 0 && battleBgm.currentTime > 0) battleBgm.currentTime = 0;
       }
       this.startBGM();
     },
@@ -306,12 +347,15 @@ const SoundFX = (() => {
       if (bgm && !bgm.paused) bgm.pause();
       if (battleBgm && !battleBgm.paused) {
         battleBgm.pause();
-        battleBgm.currentTime = 0;
+        if (battleBgm.readyState > 0 && battleBgm.currentTime > 0) battleBgm.currentTime = 0;
       }
       const bossMusic = initBossBGM();
       bossMusic.muted = muted;
-      bossMusic.currentTime = 0;
-      bossMusic.play().catch(() => {});
+      bossMusic.volume = 0.42;
+      if (bossMusic.paused) {
+        if (bossMusic.readyState > 0 && bossMusic.currentTime > 0) bossMusic.currentTime = 0;
+        bossMusic.play().catch(() => {});
+      }
     },
     stopBossBGM() {
       if (currentBgmMode !== 'boss') return;

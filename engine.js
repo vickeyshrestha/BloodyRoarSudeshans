@@ -1242,8 +1242,12 @@
 
   function acceptBossChallenge() {
     SoundFX.playMenuConfirm();
+    SoundFX.startBossBGM();
     startRound();
   }
+
+  document.addEventListener('pointerdown', () => SoundFX.resumeCurrentBGM(), { passive: true });
+  document.addEventListener('keydown', () => SoundFX.resumeCurrentBGM());
 
   function goToStory() {
     SoundFX.startBGM();
