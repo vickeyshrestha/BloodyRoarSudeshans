@@ -2609,16 +2609,17 @@
       ctx.save();
       ctx.translate(sp.x + shiftX, sp.y);
 
-      // Subtle floor contact shadow
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.34)';
+      // Subtle floor contact shadow seated directly under the feet
+      const shadowScale = Math.max(0.75, 1 + bounceY * 0.03);
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.38)';
       ctx.beginPath();
-      ctx.ellipse(0, 2, drawW * 0.34, 4.5, 0, 0, Math.PI * 2);
+      ctx.ellipse(0, -3, drawW * 0.36 * shadowScale, 5.5 * shadowScale, 0, 0, Math.PI * 2);
       ctx.fill();
 
       ctx.globalAlpha = 0.88;
       ctx.translate(0, bounceY);
       ctx.scale(sp.facing * sx, sy);
-      ctx.drawImage(img, -drawW / 2, -drawH, drawW, drawH);
+      ctx.drawImage(img, -drawW / 2, -drawH + 2, drawW, drawH);
       ctx.restore();
     }
     ctx.restore();
