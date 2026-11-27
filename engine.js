@@ -193,6 +193,7 @@
   let particles = [];
   let bloodDrops = [];
   let bloodStains = [];
+  let bgBloodSplatters = [];
   let floatingTexts = [];
   let shockwaves = [];
   let starbursts = [];
@@ -1280,6 +1281,7 @@
     particles = [];
     bloodDrops = [];
     bloodStains = [];
+    bgBloodSplatters = [];
     floatingTexts = [];
     shockwaves = [];
     starbursts = [];
@@ -2149,6 +2151,33 @@
         life: 45 + Math.random() * 25
       });
     }
+
+    // Background wall blood splat (stays longer and slowly fades behind fighters)
+    const maxBg = isMobileDevice() ? 14 : 30;
+    const splatCount = count >= 18 ? 2 : 1;
+    for (let s = 0; s < splatCount; s++) {
+      if (bgBloodSplatters.length >= maxBg) bgBloodSplatters.shift();
+      const sx = Math.max(40, Math.min(STAGE.width - 40, x + dir * (12 + Math.random() * 52)));
+      const sy = Math.max(68, Math.min(STAGE.floorTopY - 12, y + (Math.random() - 0.5) * 56));
+      const baseR = (count >= 18 ? 14 : 9) + Math.random() * 8;
+      const blobs = [
+        { dx: 0, dy: 0, rx: baseR, ry: baseR * (0.75 + Math.random() * 0.35), rot: Math.random() * Math.PI }
+      ];
+      for (let b = 0; b < 4; b++) {
+        const ang = Math.random() * Math.PI * 2;
+        const dist = baseR * (0.65 + Math.random() * 1.35);
+        const r = baseR * (0.22 + Math.random() * 0.35);
+        blobs.push({ dx: Math.cos(ang) * dist, dy: Math.sin(ang) * dist, rx: r, ry: r * 0.85, rot: ang });
+      }
+      bgBloodSplatters.push({
+        x: sx,
+        y: sy,
+        color: Math.random() < 0.45 ? '#75060f' : '#b80b19',
+        dripH: baseR * (1.1 + Math.random() * 1.4),
+        blobs,
+        life: 600
+      });
+    }
   }
 
   function spawnHitSparks(x, y, color, count) {
@@ -2414,6 +2443,30 @@
     renderStageToContext(ctx);
   }
 
+  function renderBackgroundBlood() {
+    if (!bgBloodSplatters.length) return;
+    ctx.save();
+    for (let i = bgBloodSplatters.length - 1; i >= 0; i--) {
+      const sp = bgBloodSplatters[i];
+      sp.life--;
+      if (sp.life <= 0) {
+        bgBloodSplatters.splice(i, 1);
+        continue;
+      }
+      ctx.globalAlpha = Math.min(0.68, sp.life / 220);
+      ctx.fillStyle = sp.color;
+      for (let j = 0; j < sp.blobs.length; j++) {
+        const bl = sp.blobs[j];
+        ctx.beginPath();
+        ctx.ellipse(sp.x + bl.dx, sp.y + bl.dy, bl.rx, bl.ry, bl.rot, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      // Subtle vertical drip
+      ctx.fillRect(sp.x - 1.5, sp.y, 3, sp.dripH);
+    }
+    ctx.restore();
+  }
+
   function renderEffects() {
     // Floor Blood Splatters
     for (let i = bloodStains.length - 1; i >= 0; i--) {
@@ -2424,7 +2477,7 @@
         continue;
       }
       ctx.save();
-      ctx.globalAlpha = Math.min(0.72, st.life / 120);
+      ctx.globalAlpha = Math.min(0.75, st.life / 160);
       ctx.fillStyle = st.color;
       ctx.beginPath();
       ctx.ellipse(st.x, st.y, st.rx, st.ry, 0, 0, Math.PI * 2);
@@ -2447,7 +2500,7 @@
             rx: b.size * 1.6,
             ry: b.size * 0.55,
             color: b.color,
-            life: 240
+            life: 420
           });
         }
         bloodDrops.splice(i, 1);
@@ -2745,6 +2798,7 @@
     }
 
     drawStage();
+    renderBackgroundBlood();
     if (
       (gameMode === 'ROUND_INTRO' ||
         gameMode === 'FIGHT' ||
