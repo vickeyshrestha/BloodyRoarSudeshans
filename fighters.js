@@ -235,6 +235,12 @@ function preloadAllSprites() {
 
   // Custom crouching & low-attack sprites for Vickey, Krishna & Adheesh (human & beast forms)
   [
+    'munna_human_ko',
+    'munna_beast_ko',
+    'nirbhaya_human_ko',
+    'nirbhaya_beast_ko',
+    'dinesh_human_ko',
+    'dinesh_beast_ko',
     'vickey_human_crouch',
     'vickey_human_low_punch',
     'vickey_human_low_kick',
@@ -246,12 +252,14 @@ function preloadAllSprites() {
     'krishna_human_crouch',
     'krishna_human_low_punch',
     'krishna_human_low_kick',
+    'krishna_human_ko',
     'krishna_beast_crouch',
     'krishna_beast_low_punch',
     'krishna_beast_low_kick',
     'adheesh_human_crouch',
     'adheesh_human_low_punch',
     'adheesh_human_low_kick',
+    'adheesh_human_ko',
     'adheesh_beast_crouch',
     'adheesh_beast_low_punch',
     'adheesh_beast_low_kick',
@@ -264,9 +272,11 @@ function preloadAllSprites() {
     'sumit_human_crouch',
     'sumit_human_low_punch',
     'sumit_human_low_kick',
+    'sumit_human_ko',
     'sumit_beast_crouch',
     'sumit_beast_low_punch',
     'sumit_beast_low_kick',
+    'sumit_beast_ko',
     'beemal_human_crouch',
     'beemal_human_low_punch',
     'beemal_human_low_kick',
@@ -532,7 +542,8 @@ function drawFighter(ctx, f, globalTime) {
       const koImg = getFighterSprite(f.data.id, f.isBeast, '_ko');
       if (koImg) {
         activeImg = koImg;
-        customHeightScale = 0.27;
+        const koAspect = (koImg.naturalHeight || 350) / Math.max(1, koImg.naturalWidth || 1300);
+        customHeightScale = Math.min(0.48, Math.max(0.24, koAspect * 0.98));
         hasCustomLowSprite = true;
       }
     }
