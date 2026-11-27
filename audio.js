@@ -17,6 +17,8 @@ const SoundFX = (() => {
   let chooseFighterVoice = null;
   let vsBloodyBathVoice = null;
   const beastTransformVoices = {};
+  const beastPainVoices = {};
+  let lastBeastPainTime = 0;
 
   function initBGM() {
     if (!bgm) {
@@ -408,6 +410,9 @@ const SoundFX = (() => {
       Object.values(beastTransformVoices).forEach((v) => {
         if (v) v.muted = muted;
       });
+      Object.values(beastPainVoices).forEach((v) => {
+        if (v) v.muted = muted;
+      });
       return muted;
     },
     playMenuSelect() {
@@ -439,7 +444,22 @@ const SoundFX = (() => {
     },
     playHitVoice(beastId, isBeast) {
       if (isBeast) {
-        playBeastSound(beastId, true);
+        if (muted) return;
+        const nowMs = performance.now();
+        if (nowMs - lastBeastPainTime < 130) return;
+        lastBeastPainTime = nowMs;
+        const key = beastId || 'munna';
+        if (!beastPainVoices[key]) {
+          const v = new Audio(`assets/pain_${key}.wav`);
+          v.volume = 0.88;
+          beastPainVoices[key] = v;
+        }
+        const voice = beastPainVoices[key];
+        voice.muted = muted;
+        if (voice.readyState > 0 && voice.currentTime > 0) voice.currentTime = 0;
+        voice.play().catch(() => {
+          playBeastSound(beastId, true);
+        });
       } else {
         playHumanVoice('hit');
       }
