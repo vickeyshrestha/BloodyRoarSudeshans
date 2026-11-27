@@ -238,9 +238,11 @@ function preloadAllSprites() {
     'vickey_human_crouch',
     'vickey_human_low_punch',
     'vickey_human_low_kick',
+    'vickey_human_ko',
     'vickey_beast_crouch',
     'vickey_beast_low_punch',
     'vickey_beast_low_kick',
+    'vickey_beast_ko',
     'krishna_human_crouch',
     'krishna_human_low_punch',
     'krishna_human_low_kick',
@@ -526,6 +528,13 @@ function drawFighter(ctx, f, globalTime) {
         idleImg;
     } else if (f.state === 'walk' && Math.floor((f.walkFrame || 0) / 9) % 2 === 1) {
       activeImg = getFighterSprite(f.data.id, f.isBeast, '_walk') || idleImg;
+    } else if (f.state === 'ko' || f.state === 'knockdown') {
+      const koImg = getFighterSprite(f.data.id, f.isBeast, '_ko');
+      if (koImg) {
+        activeImg = koImg;
+        customHeightScale = 0.27;
+        hasCustomLowSprite = true;
+      }
     }
     drawSpriteFighter(ctx, f, activeImg, globalTime, customHeightScale, hasCustomLowSprite);
     return;
@@ -565,7 +574,7 @@ function drawSpriteFighter(
   ctx.translate(0, heightAboveFloor);
   ctx.fillStyle = `rgba(0, 0, 0, ${(0.58 * shadowScale).toFixed(2)})`;
   ctx.beginPath();
-  const shadowW = (f.state === 'ko' || f.state === 'knockdown' ? 78 : 50 * sizeMult) * shadowScale;
+  const shadowW = (f.state === 'ko' || f.state === 'knockdown' ? (hasCustomLowSprite ? 118 : 78) : 50 * sizeMult) * shadowScale;
   ctx.ellipse(0, 3, shadowW, 10 * shadowScale, 0, 0, Math.PI * 2);
   ctx.fill();
   ctx.restore();
@@ -700,10 +709,17 @@ function drawSpriteFighter(
       break;
     case 'ko':
     case 'knockdown':
-      rot = -Math.PI / 2;
-      offsetY = -14;
-      offsetX = drawH * 0.5;
-      spriteAlpha = f.state === 'ko' ? 0.82 : 1;
+      if (hasCustomLowSprite) {
+        rot = 0;
+        offsetX = 0;
+        offsetY = 6;
+        spriteAlpha = f.state === 'ko' ? 0.94 : 1;
+      } else {
+        rot = -Math.PI / 2;
+        offsetY = -14;
+        offsetX = drawH * 0.5;
+        spriteAlpha = f.state === 'ko' ? 0.82 : 1;
+      }
       break;
     case 'victory':
       sy = 1 + Math.sin(t * 1.4) * 0.025;
