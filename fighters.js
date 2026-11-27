@@ -446,6 +446,7 @@ function computePose(state, timer, isBeast) {
       pose.backForearmAngle = 0.35;
       break;
     case 'ko':
+    case 'knockdown':
       pose.bodyY = 52;
       pose.torsoLean = -1.48;
       pose.headTilt = -0.25;
@@ -564,7 +565,7 @@ function drawSpriteFighter(
   ctx.translate(0, heightAboveFloor);
   ctx.fillStyle = `rgba(0, 0, 0, ${(0.58 * shadowScale).toFixed(2)})`;
   ctx.beginPath();
-  const shadowW = (f.state === 'ko' ? 78 : 50 * sizeMult) * shadowScale;
+  const shadowW = (f.state === 'ko' || f.state === 'knockdown' ? 78 : 50 * sizeMult) * shadowScale;
   ctx.ellipse(0, 3, shadowW, 10 * shadowScale, 0, 0, Math.PI * 2);
   ctx.fill();
   ctx.restore();
@@ -698,10 +699,11 @@ function drawSpriteFighter(
       sx = 1.02 + Math.cos(f.stateFrame * 0.14) * 0.03;
       break;
     case 'ko':
+    case 'knockdown':
       rot = -Math.PI / 2;
       offsetY = -14;
       offsetX = -drawH * 0.35;
-      spriteAlpha = 0.82;
+      spriteAlpha = f.state === 'ko' ? 0.82 : 1;
       break;
     case 'victory':
       sy = 1 + Math.sin(t * 1.4) * 0.025;
@@ -766,7 +768,7 @@ function drawVectorFighter(ctx, f, globalTime) {
   ctx.scale(1 / scale, 1 / scale);
   ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
   ctx.beginPath();
-  const shadowWidth = f.state === 'ko' ? 64 : 36 * scale;
+  const shadowWidth = f.state === 'ko' || f.state === 'knockdown' ? 64 : 36 * scale;
   ctx.ellipse(0, 2, shadowWidth, 8, 0, 0, Math.PI * 2);
   ctx.fill();
   ctx.restore();

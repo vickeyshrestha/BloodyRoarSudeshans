@@ -1524,10 +1524,10 @@
   function applyTransformKnockback(fighter, opponent) {
     const dir = opponent.x >= fighter.x ? 1 : -1;
     opponent.health = Math.max(0, opponent.health - 6);
-    opponent.vx = dir * 8.5;
-    opponent.vy = -3.2;
-    opponent.state = 'hitstun';
-    opponent.hitstunFrames = 20;
+    opponent.vx = dir * 10.5;
+    opponent.vy = -4.2;
+    opponent.state = 'knockdown';
+    opponent.knockdownFrames = 120;
     opponent.hitFlash = 6;
     SoundFX.playHit(false);
     spawnHitSparks(opponent.x, opponent.y - 64, '#c99a3b', 12);
@@ -1576,7 +1576,8 @@
       dist < 120 &&
       Math.abs(fighter.y - opponent.y) < 90 &&
       opponent.state !== 'ko' &&
-      opponent.state !== 'transform'
+      opponent.state !== 'transform' &&
+      opponent.state !== 'knockdown'
     ) {
       applyTransformKnockback(fighter, opponent);
     }
@@ -1585,6 +1586,11 @@
   function updateFighterInput(f, opponent) {
     if (f.state === 'ko' || f.state === 'victory') return;
 
+    if (f.state === 'knockdown') {
+      f.knockdownFrames = (f.knockdownFrames || 0) - 1;
+      if (f.knockdownFrames <= 0) f.state = 'idle';
+      return;
+    }
     if (f.state === 'hitstun') {
       f.hitstunFrames--;
       if (f.hitstunFrames <= 0) f.state = 'idle';
@@ -1597,6 +1603,7 @@
         opponent.state !== 'ko' &&
         opponent.state !== 'transform' &&
         opponent.state !== 'hitstun' &&
+        opponent.state !== 'knockdown' &&
         Math.abs(f.x - opponent.x) < 76 &&
         Math.abs(f.y - opponent.y) < 105
       ) {
@@ -1913,7 +1920,7 @@
   }
 
   function checkAttackHit(attacker, defender, spec) {
-    if (defender.state === 'ko' || defender.state === 'transform') return;
+    if (defender.state === 'ko' || defender.state === 'transform' || defender.state === 'knockdown') return;
 
     const defenderCrouching =
       defender.state === 'crouch' ||
@@ -2204,7 +2211,7 @@
       f.vy = 0;
     }
 
-    if (f.state === 'hitstun' || f.state === 'ko') {
+    if (f.state === 'hitstun' || f.state === 'ko' || f.state === 'knockdown') {
       f.vx *= 0.86;
     }
 
@@ -2231,7 +2238,7 @@
   }
 
   function resolvePushbox() {
-    if (p1.state === 'ko' || p2.state === 'ko') return;
+    if (p1.state === 'ko' || p2.state === 'ko' || p1.state === 'knockdown' || p2.state === 'knockdown') return;
     const b1 = getPushbox(p1);
     const b2 = getPushbox(p2);
     if (!boxesIntersect(b1, b2)) return;
