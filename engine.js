@@ -33,6 +33,11 @@
     img.src = `assets/sprites/npc_hoodie_${n}.png`;
     return img;
   });
+  const NPC_WORKER_IMAGES = [1, 2, 3, 4].map((n) => {
+    const img = new Image();
+    img.src = `assets/sprites/npc_worker_${n}.png`;
+    return img;
+  });
   const STAGE_PROP_DEFS = [
     { src: 'assets/sprites/prop_hatchback.png', targetH: 108 },
     { src: 'assets/sprites/prop_armored.png', targetH: 126 },
@@ -70,30 +75,57 @@
     }
   }
 
+  function shuffleArray(arr) {
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+  }
+
   function spawnBackgroundSpectators() {
     bgSpectators = [];
-    const deck = [0, 1, 2, 3, 4, 'hoodie'];
-    for (let i = deck.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [deck[i], deck[j]] = [deck[j], deck[i]];
+    const workerPool = shuffleArray([0, 1, 2, 3]);
+    const spectatorPool = shuffleArray([0, 1, 2, 3, 4, 'hoodie']);
+
+    const workerCount = isMobileDevice() ? 1 : (Math.random() < 0.45 ? 2 : 1);
+    const spectatorCount = isMobileDevice() ? 2 : (3 + Math.floor(Math.random() * 2));
+
+    const selected = [];
+    for (let i = 0; i < workerCount; i++) {
+      selected.push({ kind: 'worker', idx: workerPool[i] });
     }
-    const maxCount = Math.min(deck.length, isMobileDevice() ? 3 : 6);
-    const minCount = isMobileDevice() ? 2 : 3;
-    const count = minCount + Math.floor(Math.random() * (maxCount - minCount + 1));
-    const slotW = (STAGE.width - 150) / count;
+    for (let i = 0; i < spectatorCount; i++) {
+      const pick = spectatorPool[i];
+      selected.push(pick === 'hoodie' ? { kind: 'hoodie', idx: 0 } : { kind: 'spectator', idx: pick });
+    }
+    shuffleArray(selected);
+
+    const count = selected.length;
+    const marginX = 68;
+    const slotW = (STAGE.width - marginX * 2) / count;
+    const maxJitter = Math.min(24, Math.max(0, (slotW - 104) * 0.45));
+
     for (let i = 0; i < count; i++) {
-      const pick = deck[i];
-      const isHoodie = pick === 'hoodie';
-      const x = 75 + i * slotW + Math.random() * Math.max(20, slotW - 50);
+      const entry = selected[i];
+      const isHoodie = entry.kind === 'hoodie';
+      const isWorker = entry.kind === 'worker';
+      const slotCenter = marginX + (i + 0.5) * slotW;
+      const x = slotCenter + (Math.random() - 0.5) * 2 * maxJitter;
+      const targetH = isWorker
+        ? 140 + Math.random() * 8
+        : (isHoodie ? 144 : (entry.idx === 0 ? 148 : 136)) + Math.random() * 10;
+
       bgSpectators.push({
         x,
         y: STAGE.floorTopY + 10 + Math.random() * 8,
-        imgIdx: isHoodie ? 0 : pick,
+        imgIdx: entry.idx,
         isHoodie,
-        targetH: (isHoodie ? 144 : (pick === 0 ? 148 : 136)) + Math.random() * 10,
+        isWorker,
+        targetH,
         facing: Math.random() < 0.7 ? (x < STAGE.width / 2 ? 1 : -1) : (Math.random() < 0.5 ? 1 : -1),
         phase: Math.random() * Math.PI * 2,
-        speed: 0.032 + Math.random() * 0.015
+        speed: isWorker ? (0.024 + Math.random() * 0.01) : (0.032 + Math.random() * 0.015)
       });
     }
   }
@@ -2532,11 +2564,25 @@
     for (let i = 0; i < bgSpectators.length; i++) {
       const sp = bgSpectators[i];
       let img;
+      let shiftX = 0;
       let bounceY = 0;
       let sx = 1;
       let sy = 1;
 
-      if (sp.isHoodie) {
+      if (sp.isWorker) {
+        img = NPC_WORKER_IMAGES[sp.imgIdx];
+        const t = globalTime * sp.speed + sp.phase;
+        if (sp.imgIdx === 0 || sp.imgIdx === 1) {
+          // Sweeping / mopping back-and-forth motion
+          shiftX = Math.sin(t * 0.85) * 6;
+          sy = 1 + Math.sin(t * 1.7) * 0.015;
+          sx = 1 - Math.sin(t * 1.7) * 0.012;
+        } else {
+          // Carrying boxes / toolbox gentle trudge
+          shiftX = Math.sin(t * 0.45) * 7;
+          bounceY = -Math.abs(Math.sin(t * 0.9)) * 2.5;
+        }
+      } else if (sp.isHoodie) {
         const frameStep = Math.floor((globalTime * (excited ? 0.045 : 0.024) + sp.phase) % hoodieCycle.length);
         const frameIdx = hoodieCycle[frameStep];
         img = NPC_HOODIE_FRAMES[frameIdx];
@@ -2561,7 +2607,7 @@
       const drawW = drawH * aspect;
 
       ctx.save();
-      ctx.translate(sp.x, sp.y);
+      ctx.translate(sp.x + shiftX, sp.y);
 
       // Subtle floor contact shadow
       ctx.fillStyle = 'rgba(0, 0, 0, 0.34)';
