@@ -296,6 +296,12 @@
     kick: false,
     transform: false
   };
+  const lastSentGuestInput = {
+    left: false,
+    right: false,
+    up: false,
+    down: false
+  };
   let roundTimer = 99;
   let timerTicks = 0;
   let bannerTimer = 0;
@@ -2129,7 +2135,7 @@
       }
     }
 
-    if (defender.health <= 0) {
+    if (defender.health <= 0 && onlineRole !== 'guest') {
       handleKO(attacker, defender);
     }
   }
@@ -2939,11 +2945,66 @@
     };
   }
 
-  function applyFighterSnapshot(f, snap) {
+  function applyFighterSnapshot(f, snap, isLocalPredicted) {
     if (!f || !snap) return;
-    Object.assign(f, snap);
+    if (isLocalPredicted) {
+      const dx = snap.x - f.x;
+      const dy = snap.y - f.y;
+      if (Math.abs(dx) > 110) f.x = snap.x;
+      else if (Math.abs(dx) > 32) f.x += dx * 0.35;
+      if (Math.abs(dy) > 90) f.y = snap.y;
+      else if (Math.abs(dy) > 28) f.y += dy * 0.35;
+
+      f.health = snap.health;
+      f.trailHealth = snap.trailHealth;
+      f.beastGauge = snap.beastGauge;
+      f.isBeast = snap.isBeast;
+      f.roundsWon = snap.roundsWon;
+      f.comboCount = snap.comboCount;
+      f.hitFlash = snap.hitFlash;
+      f.blockRecoil = snap.blockRecoil;
+
+      if (
+        snap.state === 'hitstun' ||
+        snap.state === 'knockdown' ||
+        snap.state === 'ko' ||
+        snap.state === 'block' ||
+        snap.state === 'victory'
+      ) {
+        f.state = snap.state;
+        f.stateFrame = snap.stateFrame;
+        f.vx = snap.vx;
+        f.vy = snap.vy;
+        f.facing = snap.facing;
+      }
+      return;
+    }
+
+    // Remote opponent (Host p1): smooth interpolation for position, authoritative state
+    const dx = snap.x - f.x;
+    const dy = snap.y - f.y;
+    if (Math.abs(dx) > 95) f.x = snap.x;
+    else f.x += dx * 0.5;
+    if (Math.abs(dy) > 75) f.y = snap.y;
+    else f.y += dy * 0.5;
+
+    f.vx = snap.vx;
+    f.vy = snap.vy;
+    f.facing = snap.facing;
+    f.health = snap.health;
+    f.trailHealth = snap.trailHealth;
+    f.beastGauge = snap.beastGauge;
+    f.isBeast = snap.isBeast;
+    f.roundsWon = snap.roundsWon;
+    f.state = snap.state;
+    f.stateFrame = snap.stateFrame;
+    f.walkFrame = snap.walkFrame;
+    f.comboCount = snap.comboCount;
+    f.hitFlash = snap.hitFlash;
+    f.blockRecoil = snap.blockRecoil;
   }
 
+  let lastGuestHudSig = '';
   function applyRemoteState(st) {
     if (!st || onlineRole !== 'guest') return;
     if (st.gameMode && st.gameMode !== gameMode) {
@@ -2955,9 +3016,13 @@
     }
     roundNumber = st.roundNumber ?? roundNumber;
     roundTimer = st.roundTimer ?? roundTimer;
-    applyFighterSnapshot(p1, st.p1);
-    applyFighterSnapshot(p2, st.p2);
-    updateHUD();
+    applyFighterSnapshot(p1, st.p1, false);
+    applyFighterSnapshot(p2, st.p2, true);
+    const sig = `${roundNumber}|${roundTimer}|${p1?.health}|${p2?.health}|${p1?.beastGauge}|${p2?.beastGauge}|${p1?.isBeast}|${p2?.isBeast}|${p1?.roundsWon}|${p2?.roundsWon}`;
+    if (sig !== lastGuestHudSig) {
+      lastGuestHudSig = sig;
+      updateHUD();
+    }
   }
 
   // Main Loop: PC runs 1 step/rAF (untouched); Mobile uses snappy 80Hz delta-time + cached stage + zero HUD thrashing
@@ -3017,21 +3082,44 @@
       }
     }
 
-    // Online Guest: stream local input to Host
+    // Online Guest: event-driven input sync + client-side local prediction for 0ms response
     if (onlineRole === 'guest' && (gameMode === 'FIGHT' || gameMode === 'ROUND_INTRO')) {
       onlineSyncTick++;
+      const curLeft = keysHeld.has('ArrowLeft');
+      const curRight = keysHeld.has('ArrowRight');
+      const curUp = keysHeld.has('ArrowUp');
+      const curDown = keysHeld.has('ArrowDown');
       const hasTrigger =
         keysJustPressed.has('KeyA') || keysJustPressed.has('KeyS') || keysJustPressed.has('KeyX');
-      if (hasTrigger || onlineSyncTick % 2 === 0) {
+      const dirChanged =
+        curLeft !== lastSentGuestInput.left ||
+        curRight !== lastSentGuestInput.right ||
+        curUp !== lastSentGuestInput.up ||
+        curDown !== lastSentGuestInput.down;
+
+      if (hasTrigger || dirChanged || onlineSyncTick % 12 === 0) {
+        lastSentGuestInput.left = curLeft;
+        lastSentGuestInput.right = curRight;
+        lastSentGuestInput.up = curUp;
+        lastSentGuestInput.down = curDown;
         OnlineManager.sendBroadcast('input', {
-          left: keysHeld.has('ArrowLeft'),
-          right: keysHeld.has('ArrowRight'),
-          up: keysHeld.has('ArrowUp'),
-          down: keysHeld.has('ArrowDown'),
+          left: curLeft,
+          right: curRight,
+          up: curUp,
+          down: curDown,
           punch: keysJustPressed.has('KeyA'),
           kick: keysJustPressed.has('KeyS'),
           transform: keysJustPressed.has('KeyX')
         });
+      }
+
+      if (gameMode === 'FIGHT' && p2 && p1) {
+        updateFighterInput(p2, p1);
+      }
+      if (p1 && p2) {
+        applyPhysics(p1);
+        applyPhysics(p2);
+        resolvePushbox();
       }
     }
 
@@ -3058,10 +3146,10 @@
         resolvePushbox();
       }
 
-      // Online Host: broadcast authoritative state to Guest
+      // Online Host: broadcast authoritative state to Guest (~20 Hz to avoid Realtime throttling)
       if (onlineRole === 'host') {
         onlineSyncTick++;
-        if (onlineSyncTick % 2 === 0) {
+        if (onlineSyncTick % 3 === 0) {
           OnlineManager.sendBroadcast('state', {
             gameMode,
             roundNumber,
