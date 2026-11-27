@@ -1366,7 +1366,7 @@
     drawPortrait(vsP2Canvas, f2Data, false);
 
     gameMode = 'VS';
-    vsTimer = 240; // ~4 seconds at 60 FPS
+    vsTimer = 330; // ~5.5 seconds at 60 FPS
     hudEl.classList.add('hidden');
     showOnlyScreen(vsScreen);
     SoundFX.playVsAnnounce();
@@ -1927,7 +1927,7 @@
       defender.health = Math.max(0, defender.health - chipDmg);
       defender.beastGauge = Math.min(100, defender.beastGauge + 4.5);
       defender.blockRecoil = 8;
-      attacker.beastGauge = Math.min(100, attacker.beastGauge + 2);
+      attacker.beastGauge = Math.min(100, attacker.beastGauge + 0.5);
       SoundFX.playBlock();
       spawnHitSparks(impactX, impactY, '#5ea8c9', 10);
       shockwaves.push({
@@ -1954,7 +1954,7 @@
       if (localAttacker) {
         liveMatchScore += spec.damage * 10 + (attacker.comboCount > 1 ? attacker.comboCount * 15 : 0);
       }
-      if (!attacker.isBeast) attacker.beastGauge = Math.min(100, attacker.beastGauge + 6);
+      if (!attacker.isBeast) attacker.beastGauge = Math.min(100, attacker.beastGauge + 1.5);
       if (!defender.isBeast) defender.beastGauge = Math.min(100, defender.beastGauge + 5);
 
       SoundFX.playHit(spec.heavy);
