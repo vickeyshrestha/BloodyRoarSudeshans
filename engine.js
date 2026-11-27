@@ -342,7 +342,7 @@
     }
   })();
   const gameOptions = {
-    difficulty: savedOpts.difficulty || 'easy',
+    difficulty: savedOpts.difficulty || 'medium',
     matchTime: Number(savedOpts.matchTime) || 99,
     bloodGore: savedOpts.bloodGore !== undefined ? !!savedOpts.bloodGore : true
   };
@@ -1106,6 +1106,14 @@
   let onlineLocalConfirmed = false;
   let onlineSelectSeconds = 20;
   let onlineSelectInterval = null;
+  let onlineRoomsRefreshTimer = null;
+
+  function stopOnlineRoomsAutoRefresh() {
+    if (onlineRoomsRefreshTimer) {
+      clearInterval(onlineRoomsRefreshTimer);
+      onlineRoomsRefreshTimer = null;
+    }
+  }
 
   function enterOnlineFighterSelect() {
     onlineHostFighterId = null;
@@ -1180,10 +1188,20 @@
     hudEl.classList.add('hidden');
     showOnlyScreen(onlineScreen);
     await refreshOpenRooms();
+    stopOnlineRoomsAutoRefresh();
+    onlineRoomsRefreshTimer = setInterval(() => {
+      if (gameMode !== 'ONLINE') {
+        stopOnlineRoomsAutoRefresh();
+        return;
+      }
+      refreshOpenRooms({ silent: true });
+    }, 2000);
   }
 
-  async function refreshOpenRooms() {
-    onlineRoomsList.innerHTML = '<div class="empty-msg">Loading open rooms...</div>';
+  async function refreshOpenRooms({ silent = false } = {}) {
+    if (!silent) {
+      onlineRoomsList.innerHTML = '<div class="empty-msg">Loading open rooms...</div>';
+    }
     const rooms = await OnlineManager.listWaitingRooms();
     if (!rooms.length) {
       onlineRoomsList.innerHTML = '<div class="empty-msg">No open rooms. Click HOST GAME to create one!</div>';
@@ -1925,7 +1943,7 @@
       transform: false
     };
 
-    let diff = gameOptions.difficulty || 'easy';
+    let diff = gameOptions.difficulty || 'medium';
     if (!onlineRole && arcadeStage === 5 && cpu === p2) {
       const bossTier = { easy: 'medium', normal: 'hard', medium: 'hard', hard: 'brutal', brutal: 'brutal' };
       diff = bossTier[diff] || 'medium';
