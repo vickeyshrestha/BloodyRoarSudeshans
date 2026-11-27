@@ -9,6 +9,7 @@ const SoundFX = (() => {
   let bossBgm = null;
   let bossBgmActive = false;
   const roundSounds = {};
+  let fightVoice = null;
 
   function initBGM() {
     if (!bgm) {
@@ -290,6 +291,9 @@ const SoundFX = (() => {
       Object.values(roundSounds).forEach((s) => {
         s.muted = muted;
       });
+      if (fightVoice) {
+        fightVoice.muted = muted;
+      }
       return muted;
     },
     playMenuSelect() {
@@ -364,8 +368,17 @@ const SoundFX = (() => {
       snd.play().catch(() => {});
     },
     playRoundStart() {
-      playTone(330, 440, 0.12, 'square', 0.12);
-      playTone(440, 660, 0.18, 'square', 0.14, 0.12);
+      if (!muted) {
+        if (!fightVoice) {
+          fightVoice = new Audio('assets/fight.wav');
+          fightVoice.volume = 0.95;
+        }
+        fightVoice.muted = muted;
+        fightVoice.currentTime = 0;
+        fightVoice.play().catch(() => {});
+      }
+      playTone(330, 440, 0.12, 'square', 0.10);
+      playTone(440, 660, 0.18, 'square', 0.12, 0.12);
     },
     playKO() {
       playNoiseBurst(0.42, 550, 0.35, 'lowpass');
