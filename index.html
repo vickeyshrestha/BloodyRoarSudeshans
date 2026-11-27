@@ -281,9 +281,8 @@
 
           <div class="online-grid">
             <div class="online-col">
-              <div class="online-section-label">1. YOUR NAME &amp; FIGHTER</div>
-              <input id="online-player-name" type="text" maxlength="20" placeholder="Enter your name..." class="online-input" />
-              <select id="online-fighter-select" class="online-input"></select>
+              <div class="online-section-label">1. YOUR NAME</div>
+              <input id="online-player-name" type="text" maxlength="20" placeholder="Enter your name (required)..." class="online-input" required />
 
               <div class="online-section-label" style="margin-top:10px;">2. HOST OR JOIN</div>
               <button id="btn-online-host" class="arcade-btn primary" style="width:100%;">HOST GAME</button>
@@ -358,6 +357,10 @@
         <div class="select-header">
           <h2>SELECT YOUR FIGHTER</h2>
           <p>Click a fighter card or use <kbd>←</kbd> <kbd>→</kbd> <kbd>↑</kbd> <kbd>↓</kbd> &amp; <kbd>Enter</kbd></p>
+          <div id="online-select-bar" class="hidden" style="margin-top:6px; display:flex; justify-content:center; align-items:center; gap:16px; font-size:0.95rem; font-weight:700;">
+            <span id="online-select-timer" style="color:#ffd166; letter-spacing:1px;">TIME: 20s</span>
+            <span id="online-select-opp" style="color:#8ecae6;">OPPONENT: SELECTING...</span>
+          </div>
         </div>
         <div id="roster-grid" class="roster-grid"></div>
         <div class="select-footer">

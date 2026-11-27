@@ -184,6 +184,7 @@ const OnlineManager = (() => {
     code,
     {
       onGuestJoin,
+      onFighterPick,
       onRemoteInput,
       onRemoteState,
       onMatchEnd,
@@ -204,6 +205,9 @@ const OnlineManager = (() => {
     channel
       .on('broadcast', { event: 'guest_join' }, ({ payload }) => {
         if (onGuestJoin) onGuestJoin(payload);
+      })
+      .on('broadcast', { event: 'fighter_pick' }, ({ payload }) => {
+        if (onFighterPick) onFighterPick(payload);
       })
       .on('broadcast', { event: 'input' }, ({ payload }) => {
         if (onRemoteInput) onRemoteInput(payload);

@@ -182,7 +182,9 @@
 
   const globalPlayerNameInput = document.getElementById('global-player-name');
   const onlinePlayerNameInput = document.getElementById('online-player-name');
-  const onlineFighterSelect = document.getElementById('online-fighter-select');
+  const onlineSelectBar = document.getElementById('online-select-bar');
+  const onlineSelectTimerEl = document.getElementById('online-select-timer');
+  const onlineSelectOppEl = document.getElementById('online-select-opp');
   const onlineRoomCodeInput = document.getElementById('online-room-code');
   const onlineStatusEl = document.getElementById('online-status');
   const onlineRoomsList = document.getElementById('online-rooms-list');
@@ -889,6 +891,15 @@
     SoundFX.startBGM();
     SoundFX.playMenuConfirm();
     isPaused = false;
+    if (onlineSelectInterval) {
+      clearInterval(onlineSelectInterval);
+      onlineSelectInterval = null;
+    }
+    if (onlineSelectBar) onlineSelectBar.classList.add('hidden');
+    if (btnConfirmFighter) {
+      btnConfirmFighter.disabled = false;
+      btnConfirmFighter.textContent = 'FIGHT!';
+    }
     standaloneCredits = false;
     onlineRole = null;
     OnlineManager.closeHostedRoom();
@@ -1073,22 +1084,81 @@
       .replace(/>/g, '&gt;');
   }
 
-  function populateOnlineFighters() {
-    if (!onlineFighterSelect || onlineFighterSelect.options.length > 0) return;
-    FIGHTERS.forEach((f) => {
-      const opt = document.createElement('option');
-      opt.value = f.id;
-      opt.textContent = `${f.name} (Beast: ${f.beastName})`;
-      onlineFighterSelect.appendChild(opt);
-    });
+  let onlineHostFighterId = null;
+  let onlineGuestFighterId = null;
+  let onlineLocalConfirmed = false;
+  let onlineSelectSeconds = 20;
+  let onlineSelectInterval = null;
+
+  function enterOnlineFighterSelect() {
+    onlineHostFighterId = null;
+    onlineGuestFighterId = null;
+    onlineLocalConfirmed = false;
+    onlineSelectSeconds = 20;
+    if (onlineSelectInterval) clearInterval(onlineSelectInterval);
+
+    if (onlineSelectBar) onlineSelectBar.classList.remove('hidden');
+    if (onlineSelectTimerEl) onlineSelectTimerEl.textContent = 'TIME: 20s';
+    if (onlineSelectOppEl) onlineSelectOppEl.textContent = 'OPPONENT: SELECTING...';
+    if (btnConfirmFighter) {
+      btnConfirmFighter.disabled = false;
+      btnConfirmFighter.textContent = 'LOCK IN!';
+    }
+
+    goToSelect();
+
+    onlineSelectInterval = setInterval(() => {
+      if (gameMode !== 'SELECT' || !onlineRole) {
+        clearInterval(onlineSelectInterval);
+        onlineSelectInterval = null;
+        return;
+      }
+      onlineSelectSeconds--;
+      if (onlineSelectTimerEl) {
+        onlineSelectTimerEl.textContent = `TIME: ${Math.max(0, onlineSelectSeconds)}s`;
+      }
+      if (onlineSelectSeconds <= 0) {
+        clearInterval(onlineSelectInterval);
+        onlineSelectInterval = null;
+        if (!onlineLocalConfirmed) {
+          startMatchFromSelect();
+        }
+      }
+    }, 1000);
+  }
+
+  function handleOnlineFighterPick(payload) {
+    if (!payload || !payload.fighterId) return;
+    if (payload.role === 'host') onlineHostFighterId = payload.fighterId;
+    else if (payload.role === 'guest') onlineGuestFighterId = payload.fighterId;
+    if (onlineSelectOppEl) {
+      onlineSelectOppEl.textContent = `OPPONENT READY: ${getFighterById(payload.fighterId).name.toUpperCase()}`;
+    }
+    tryStartOnlineMatchFromSelect();
+  }
+
+  function tryStartOnlineMatchFromSelect() {
+    if (!onlineRole || !onlineHostFighterId || !onlineGuestFighterId) return;
+    if (onlineSelectInterval) {
+      clearInterval(onlineSelectInterval);
+      onlineSelectInterval = null;
+    }
+    if (onlineSelectBar) onlineSelectBar.classList.add('hidden');
+    if (btnConfirmFighter) {
+      btnConfirmFighter.disabled = false;
+      btnConfirmFighter.textContent = 'FIGHT!';
+    }
+    const localFighterId = onlineRole === 'host' ? onlineHostFighterId : onlineGuestFighterId;
+    OnlineManager.logPlayerVisit({ playerName, mode: 'online', fighterId: localFighterId });
+    startMatch(getFighterById(onlineHostFighterId), getFighterById(onlineGuestFighterId));
   }
 
   async function goToOnline() {
     SoundFX.startBattleBGM();
     SoundFX.playMenuConfirm();
-    populateOnlineFighters();
-    syncPlayerNameFromInput(playerName);
-    onlineStatusEl.textContent = 'Ready to host or join a match.';
+    if (onlinePlayerNameInput) onlinePlayerNameInput.value = '';
+    onlineStatusEl.style.color = '';
+    onlineStatusEl.textContent = 'Enter your name, then host or join a match.';
     gameMode = 'ONLINE';
     hudEl.classList.add('hidden');
     showOnlyScreen(onlineScreen);
@@ -1107,7 +1177,7 @@
       const row = document.createElement('div');
       row.className = 'room-row';
       row.innerHTML = `
-        <span><strong>${escapeHtml(r.code)}</strong> &bull; ${escapeHtml(r.host_name)} (${escapeHtml(getFighterById(r.host_fighter).name)})</span>
+        <span><strong>${escapeHtml(r.code)}</strong> &bull; ${escapeHtml(r.host_name)}</span>
         <button class="mini-btn">JOIN</button>
       `;
       row.querySelector('button').addEventListener('click', () => handleJoinRoom(r.code));
@@ -1116,12 +1186,18 @@
   }
 
   async function handleHostRoom() {
-    syncPlayerNameFromInput(onlinePlayerNameInput.value);
-    const fighterId = onlineFighterSelect.value || FIGHTERS[0].id;
-    OnlineManager.logPlayerVisit({ playerName, mode: 'online', fighterId });
+    const enteredName = (onlinePlayerNameInput.value || '').trim();
+    if (!enteredName) {
+      onlineStatusEl.style.color = '#ff6b6b';
+      onlineStatusEl.textContent = 'Please enter Your Name first (required)!';
+      onlinePlayerNameInput.focus();
+      return;
+    }
+    onlineStatusEl.style.color = '';
+    syncPlayerNameFromInput(enteredName);
     onlineStatusEl.textContent = 'Creating room in Supabase...';
     try {
-      const code = await OnlineManager.hostRoom(playerName, fighterId);
+      const code = await OnlineManager.hostRoom(playerName, FIGHTERS[0].id);
       onlineRole = 'host';
       onlineHostName = playerName;
       onlineStatusEl.textContent = `Room ${code} created! Share code & waiting for opponent...`;
@@ -1130,10 +1206,9 @@
         onGuestJoin: (payload) => {
           OnlineManager.stopHeartbeat();
           onlineGuestName = payload.guestName || 'Guest';
-          const f1 = getFighterById(fighterId);
-          const f2 = getFighterById(payload.guestFighter || FIGHTERS[1].id);
-          startMatch(f1, f2);
+          enterOnlineFighterSelect();
         },
+        onFighterPick: (payload) => handleOnlineFighterPick(payload),
         onRemoteInput: (inp) => {
           if (inp) {
             remoteInput.left = !!inp.left;
@@ -1157,7 +1232,7 @@
           goToMenu();
         },
         onPeerLeave: () => {
-          if (gameMode === 'FIGHT' || gameMode === 'ROUND_INTRO') {
+          if (gameMode === 'FIGHT' || gameMode === 'ROUND_INTRO' || (gameMode === 'SELECT' && onlineRole)) {
             showBanner('OPPONENT LEFT', 'Returning to menu...', 90);
           }
         }
@@ -1169,24 +1244,30 @@
   }
 
   async function handleJoinRoom(rawCode) {
-    syncPlayerNameFromInput(onlinePlayerNameInput.value);
+    const enteredName = (onlinePlayerNameInput.value || '').trim();
+    if (!enteredName) {
+      onlineStatusEl.style.color = '#ff6b6b';
+      onlineStatusEl.textContent = 'Please enter Your Name first (required)!';
+      onlinePlayerNameInput.focus();
+      return;
+    }
     const code = (rawCode || '').trim().toUpperCase();
     if (!code) {
+      onlineStatusEl.style.color = '#ff6b6b';
       onlineStatusEl.textContent = 'Enter a 6-character room code first.';
       return;
     }
-    const fighterId = onlineFighterSelect.value || FIGHTERS[1].id;
-    OnlineManager.logPlayerVisit({ playerName, mode: 'online', fighterId });
+    onlineStatusEl.style.color = '';
+    syncPlayerNameFromInput(enteredName);
     onlineStatusEl.textContent = `Joining room ${code}...`;
     try {
-      const room = await OnlineManager.joinRoom(code, playerName, fighterId);
+      const room = await OnlineManager.joinRoom(code, playerName, FIGHTERS[1].id);
       onlineRole = 'guest';
       onlineHostName = room.host_name;
       onlineGuestName = playerName;
-      const f1 = getFighterById(room.host_fighter);
-      const f2 = getFighterById(fighterId);
 
       OnlineManager.connectChannel(code, {
+        onFighterPick: (payload) => handleOnlineFighterPick(payload),
         onRemoteState: (st) => applyRemoteState(st),
         onMatchEnd: (payload) => handleOnlineMatchEnd(payload),
         onRematchRequest: (payload) => handleIncomingRematchRequest(payload),
@@ -1200,21 +1281,20 @@
           goToMenu();
         },
         onPeerLeave: () => {
-          if (gameMode === 'FIGHT' || gameMode === 'ROUND_INTRO') {
+          if (gameMode === 'FIGHT' || gameMode === 'ROUND_INTRO' || (gameMode === 'SELECT' && onlineRole)) {
             showBanner('HOST DISCONNECTED', 'Returning to menu...', 90);
           }
         }
       });
 
-      // Notify Host that Guest is connected
+      // Notify Host that Guest is connected so both enter Fighter Select
       setTimeout(() => {
         OnlineManager.sendBroadcast('guest_join', {
-          guestName: playerName,
-          guestFighter: fighterId
+          guestName: playerName
         });
       }, 350);
 
-      startMatch(f1, f2);
+      enterOnlineFighterSelect();
     } catch (err) {
       onlineStatusEl.textContent = `Join error: ${err.message || err}`;
     }
@@ -1261,6 +1341,13 @@
     SoundFX.startBattleBGM();
     SoundFX.playMenuConfirm();
     SoundFX.playChooseFighter();
+    if (!onlineRole) {
+      if (onlineSelectBar) onlineSelectBar.classList.add('hidden');
+      if (btnConfirmFighter) {
+        btnConfirmFighter.disabled = false;
+        btnConfirmFighter.textContent = 'FIGHT!';
+      }
+    }
     gameMode = 'SELECT';
     hudEl.classList.add('hidden');
     showOnlyScreen(selectScreen);
@@ -1287,6 +1374,22 @@
   function startMatchFromSelect() {
     SoundFX.playMenuConfirm();
     const playerFighter = FIGHTERS[selectedIndex];
+    if (onlineRole === 'host' || onlineRole === 'guest') {
+      if (onlineLocalConfirmed) return;
+      onlineLocalConfirmed = true;
+      if (onlineRole === 'host') onlineHostFighterId = playerFighter.id;
+      else onlineGuestFighterId = playerFighter.id;
+      if (btnConfirmFighter) {
+        btnConfirmFighter.disabled = true;
+        btnConfirmFighter.textContent = 'READY!';
+      }
+      OnlineManager.sendBroadcast('fighter_pick', {
+        role: onlineRole,
+        fighterId: playerFighter.id
+      });
+      tryStartOnlineMatchFromSelect();
+      return;
+    }
     startArcadeLadder(playerFighter);
   }
 
