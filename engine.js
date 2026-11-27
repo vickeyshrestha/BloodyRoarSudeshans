@@ -39,6 +39,11 @@
     img.src = `assets/sprites/npc_worker_${n}.png`;
     return img;
   });
+  const NPC_DANCER_IMAGES = [1, 2, 3, 4].map((n) => {
+    const img = new Image();
+    img.src = `assets/sprites/npc_dancer_${n}.png`;
+    return img;
+  });
   const STAGE_PROP_DEFS = [
     { src: 'assets/sprites/prop_hatchback.png', targetH: 108 },
     { src: 'assets/sprites/prop_armored.png', targetH: 126 },
@@ -96,14 +101,20 @@
   function spawnBackgroundSpectators() {
     bgSpectators = [];
     const workerPool = shuffleArray([0, 1, 2, 3]);
+    const dancerPool = shuffleArray([0, 1, 2, 3]);
     const spectatorPool = shuffleArray([0, 1, 2, 3, 4, 'hoodie']);
 
-    const workerCount = isMobileDevice() ? 1 : (Math.random() < 0.45 ? 2 : 1);
-    const spectatorCount = isMobileDevice() ? 2 : (3 + Math.floor(Math.random() * 2));
+    const compact = isMobileDevice();
+    const workerCount = compact ? 1 : (Math.random() < 0.45 ? 2 : 1);
+    const dancerCount = compact ? 2 : (2 + Math.floor(Math.random() * 2)); // 2-3 dancers on desktop
+    const spectatorCount = compact ? 2 : (3 + Math.floor(Math.random() * 2)); // 3-4 spectators on desktop
 
     const selected = [];
     for (let i = 0; i < workerCount; i++) {
       selected.push({ kind: 'worker', idx: workerPool[i] });
+    }
+    for (let i = 0; i < dancerCount; i++) {
+      selected.push({ kind: 'dancer', idx: dancerPool[i] });
     }
     for (let i = 0; i < spectatorCount; i++) {
       const pick = spectatorPool[i];
@@ -112,19 +123,22 @@
     shuffleArray(selected);
 
     const count = selected.length;
-    const marginX = 68;
+    const marginX = 52;
     const slotW = (STAGE.width - marginX * 2) / count;
-    const maxJitter = Math.min(24, Math.max(0, (slotW - 104) * 0.45));
+    const maxJitter = Math.min(12, Math.max(0, (slotW - 96) * 0.4));
 
     for (let i = 0; i < count; i++) {
       const entry = selected[i];
       const isHoodie = entry.kind === 'hoodie';
       const isWorker = entry.kind === 'worker';
+      const isDancer = entry.kind === 'dancer';
       const slotCenter = marginX + (i + 0.5) * slotW;
       const x = slotCenter + (Math.random() - 0.5) * 2 * maxJitter;
       const targetH = isWorker
-        ? 140 + Math.random() * 8
-        : (isHoodie ? 144 : (entry.idx === 0 ? 148 : 136)) + Math.random() * 10;
+        ? 138 + Math.random() * 8
+        : isDancer
+          ? (entry.idx === 1 ? 148 : 138) + Math.random() * 8
+          : (isHoodie ? 142 : (entry.idx === 0 ? 146 : 134)) + Math.random() * 10;
 
       bgSpectators.push({
         x,
@@ -132,10 +146,15 @@
         imgIdx: entry.idx,
         isHoodie,
         isWorker,
+        isDancer,
         targetH,
         facing: Math.random() < 0.7 ? (x < STAGE.width / 2 ? 1 : -1) : (Math.random() < 0.5 ? 1 : -1),
         phase: Math.random() * Math.PI * 2,
-        speed: isWorker ? (0.024 + Math.random() * 0.01) : (0.032 + Math.random() * 0.015)
+        speed: isWorker
+          ? (0.024 + Math.random() * 0.01)
+          : isDancer
+            ? (0.042 + Math.random() * 0.014)
+            : (0.032 + Math.random() * 0.015)
       });
     }
   }
@@ -2788,10 +2807,19 @@
       let img;
       let shiftX = 0;
       let bounceY = 0;
+      let rot = 0;
       let sx = 1;
       let sy = 1;
 
-      if (sp.isWorker) {
+      if (sp.isDancer) {
+        img = NPC_DANCER_IMAGES[sp.imgIdx];
+        const t = globalTime * sp.speed * (excited ? 1.25 : 1.0) + sp.phase;
+        shiftX = Math.sin(t * 0.9) * 5;
+        bounceY = -Math.abs(Math.sin(t * 1.8)) * (excited ? 6.5 : 4);
+        sy = 1 + Math.sin(t * 1.8) * 0.026;
+        sx = 1 - Math.sin(t * 1.8) * 0.018;
+        rot = Math.sin(t * 0.9) * 0.045;
+      } else if (sp.isWorker) {
         img = NPC_WORKER_IMAGES[sp.imgIdx];
         const t = globalTime * sp.speed + sp.phase;
         if (sp.imgIdx === 0 || sp.imgIdx === 1) {
@@ -2840,6 +2868,7 @@
 
       ctx.globalAlpha = 0.88;
       ctx.translate(0, bounceY);
+      if (rot) ctx.rotate(rot);
       ctx.scale(sp.facing * sx, sy);
       ctx.drawImage(img, -drawW / 2, -drawH + 2, drawW, drawH);
       ctx.restore();
