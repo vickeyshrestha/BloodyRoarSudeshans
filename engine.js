@@ -50,6 +50,15 @@
   });
   let bgProps = [];
   let bgSpectators = [];
+  const weatherSystem =
+    typeof WeatherSystem === 'function'
+      ? new WeatherSystem({
+          width: STAGE.width,
+          height: STAGE.height,
+          floorTopY: STAGE.floorTopY,
+          groundY: STAGE.groundY
+        })
+      : null;
 
   function spawnBackgroundProps() {
     bgProps = [];
@@ -149,6 +158,7 @@
     const nextIdx = stageBgDeck.pop();
     lastStageBgIdx = nextIdx;
     currentStageBg = STAGE_BG_IMAGES[nextIdx];
+    if (weatherSystem) weatherSystem.resetForStage();
     spawnBackgroundProps();
     spawnBackgroundSpectators();
   }
@@ -2983,6 +2993,7 @@
       updateHUD();
     }
 
+    if (weatherSystem) weatherSystem.update();
     ctx.save();
     if (shakeFrames > 0) {
       shakeFrames--;
@@ -2992,6 +3003,7 @@
     }
 
     drawStage();
+    if (weatherSystem) weatherSystem.drawBackgroundWeather(ctx);
     drawBackgroundProps();
     drawBackgroundSpectators();
     if (
@@ -3007,6 +3019,7 @@
       drawFighter(ctx, p2, globalTime);
       drawDebugBoxes();
       renderEffects();
+      if (weatherSystem) weatherSystem.drawForegroundWeather(ctx);
     } else if (gameMode === 'VICTORY_CUTSCENE' && p1) {
       drawTrophyCutscene(ctx, p1, globalTime);
       renderEffects();
