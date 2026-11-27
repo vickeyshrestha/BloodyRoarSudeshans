@@ -1898,6 +1898,7 @@
       // ~30% reduced jump velocity paired with lower gravity for weighty jump arcs
       f.vy = f.data.stats.jumpForce * 0.72;
       f.state = 'jump';
+      if (onlineRole === 'guest') f._localJumpUntil = performance.now() + 420;
       SoundFX.playJump(f.isBeast, f.data.id);
       spawnDust(f.x, STAGE.groundY);
     }
@@ -2990,7 +2991,8 @@
         f.x += dx * 0.18;
       }
 
-      if (Math.abs(dy) > 95) {
+      const inJumpGrace = f._localJumpUntil && performance.now() < f._localJumpUntil;
+      if (!inJumpGrace && Math.abs(dy) > 155) {
         f.y = snap.y;
         f.vy = snap.vy;
       }
