@@ -210,39 +210,39 @@ const SoundFX = (() => {
     const scale = shortCall ? 0.55 : 1.0;
 
     if (beastId === 'munna') {
-      // Goat: Vibrato bleat ("Maaa!")
-      const dur = 0.42 * scale;
+      // Bengal Tiger: Deep resonant roar & snarl
+      const dur = 0.56 * scale;
       const osc = c.createOscillator();
-      const lfo = c.createOscillator();
-      const lfoGain = c.createGain();
+      const sub = c.createOscillator();
       const filter = c.createBiquadFilter();
       const gain = c.createGain();
 
       osc.type = 'sawtooth';
-      osc.frequency.setValueAtTime(320, now);
-      osc.frequency.linearRampToValueAtTime(275, now + dur);
+      osc.frequency.setValueAtTime(145, now);
+      osc.frequency.exponentialRampToValueAtTime(62, now + dur);
 
-      lfo.type = 'sine';
-      lfo.frequency.value = 24;
-      lfoGain.gain.value = 26;
-      lfo.connect(lfoGain);
-      lfoGain.connect(osc.frequency);
+      sub.type = 'triangle';
+      sub.frequency.setValueAtTime(88, now);
+      sub.frequency.exponentialRampToValueAtTime(42, now + dur);
 
-      filter.type = 'bandpass';
-      filter.frequency.value = 950;
-      filter.Q.value = 2.2;
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(680, now);
+      filter.frequency.exponentialRampToValueAtTime(210, now + dur);
+      filter.Q.value = 3.2;
 
-      gain.gain.setValueAtTime(0.24 * scale, now);
+      gain.gain.setValueAtTime(0.32 * scale, now);
       gain.gain.exponentialRampToValueAtTime(0.001, now + dur);
 
       osc.connect(filter);
+      sub.connect(filter);
       filter.connect(gain);
       gain.connect(c.destination);
 
-      lfo.start(now);
       osc.start(now);
-      lfo.stop(now + dur);
+      sub.start(now);
       osc.stop(now + dur);
+      sub.stop(now + dur);
+      playNoiseBurst(0.38 * scale, 520, 0.24 * scale, 'bandpass', 0.02);
     } else if (beastId === 'nirbhaya') {
       // Ant: Rapid insectoid mandible clicks + chitinous buzz
       const clicks = shortCall ? 3 : 6;

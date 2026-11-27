@@ -4,9 +4,9 @@ const FIGHTERS = [
   {
     id: 'munna',
     name: 'Munna Thapa',
-    beastName: 'Goat',
+    beastName: 'Bengal Tiger',
     portraitSrc: 'assets/Munna.jpg',
-    desc: 'Agile mountain striker with heavy ridged horns & devastating kick knockback.',
+    desc: 'Agile mountain striker with razor Bengal Tiger claws & devastating kick knockback.',
     stats: { speed: 7, power: 7, range: 6, health: 105, jumpForce: -14.8, scale: 1.0 },
     palette: {
       skin: '#b88563',
@@ -15,12 +15,12 @@ const FIGHTERS = [
       top: '#6e2329',
       topShadow: '#3f1116',
       pants: '#1f242e',
-      accent: '#b89446',
-      beastMain: '#5c554c',
-      beastDark: '#332e29',
-      beastLight: '#8a8073',
-      beastHorn: '#29211c',
-      eye: '#e0a82e'
+      accent: '#d97a26',
+      beastMain: '#c86a22',
+      beastDark: '#2b1c12',
+      beastLight: '#e89848',
+      beastHorn: '#f0e2ce',
+      eye: '#ffaa22'
     }
   },
   {
@@ -236,6 +236,9 @@ function preloadAllSprites() {
   // Custom crouching & low-attack sprites for Vickey, Krishna & Adheesh (human & beast forms)
   [
     'munna_human_ko',
+    'munna_beast_crouch',
+    'munna_beast_low_punch',
+    'munna_beast_low_kick',
     'munna_beast_ko',
     'nirbhaya_human_ko',
     'nirbhaya_beast_ko',
@@ -1075,37 +1078,29 @@ function drawRealisticBeastHead(ctx, data, pal, isFlashing) {
   ctx.lineWidth = 2.4;
 
   if (data.id === 'munna') {
-    // Goat: Heavy ridged swept-back horns, angular goat skull & beard
-    ctx.fillStyle = pal.beastHorn;
+    // Bengal Tiger: Rounded ears, muscular feline snout, white cheek ruff & stripes
+    ctx.fillStyle = pal.beastMain;
     ctx.beginPath();
-    ctx.moveTo(-2, -8);
-    ctx.quadraticCurveTo(-18, -26, -26, -12);
-    ctx.lineTo(-21, -8);
-    ctx.quadraticCurveTo(-14, -18, 0, -6);
-    ctx.closePath();
+    ctx.arc(-5, -9, 4.5, 0, Math.PI * 2);
+    ctx.arc(3, -10, 4.5, 0, Math.PI * 2);
     ctx.fill();
     ctx.stroke();
 
     ctx.fillStyle = grad;
     ctx.beginPath();
-    ctx.moveTo(-8, -9);
-    ctx.lineTo(4, -10);
-    ctx.lineTo(14, 1);
-    ctx.lineTo(9, 8);
-    ctx.lineTo(-6, 9);
+    ctx.moveTo(-9, -9);
+    ctx.lineTo(5, -10);
+    ctx.lineTo(14, -1);
+    ctx.lineTo(11, 7);
+    ctx.lineTo(-7, 9);
     ctx.closePath();
     ctx.fill();
     ctx.stroke();
 
-    // Rugged beard
+    // Tiger stripes & cheek ruff
     ctx.fillStyle = pal.beastDark;
-    ctx.beginPath();
-    ctx.moveTo(5, 8);
-    ctx.lineTo(11, 19);
-    ctx.lineTo(0, 10);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
+    ctx.fillRect(-5, -8, 2.5, 6);
+    ctx.fillRect(0, -8, 2.5, 5);
   } else if (data.id === 'nirbhaya') {
     // Ant: Biomechanical chitinous skull, swept antennae, serrated mandibles
     ctx.strokeStyle = '#090a0f';
