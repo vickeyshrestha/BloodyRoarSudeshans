@@ -9,8 +9,8 @@
     height: 540,
     floorTopY: 412, // Back horizon edge of the wooden floor
     groundY: 488,   // Fighters stand in the middle of the wooden floor (Street Fighter style)
-    leftBound: 56,
-    rightBound: 904,
+    leftBound: 76,
+    rightBound: 884,
     gravity: 0.42
   };
 
@@ -1524,8 +1524,8 @@
   function applyTransformKnockback(fighter, opponent) {
     const dir = opponent.x >= fighter.x ? 1 : -1;
     opponent.health = Math.max(0, opponent.health - 6);
-    opponent.vx = dir * 10.5;
-    opponent.vy = -4.2;
+    opponent.vx = dir * 28;
+    opponent.vy = -6.5;
     opponent.state = 'knockdown';
     opponent.knockdownFrames = 120;
     opponent.hitFlash = 6;
@@ -2211,11 +2211,15 @@
       f.vy = 0;
     }
 
-    if (f.state === 'hitstun' || f.state === 'ko' || f.state === 'knockdown') {
+    if (f.state === 'knockdown') {
+      f.vx *= 0.94;
+    } else if (f.state === 'hitstun' || f.state === 'ko') {
       f.vx *= 0.86;
     }
 
-    f.x = Math.max(STAGE.leftBound, Math.min(STAGE.rightBound, f.x));
+    const minX = f.state === 'knockdown' || f.state === 'ko' ? STAGE.leftBound + 20 : STAGE.leftBound;
+    const maxX = f.state === 'knockdown' || f.state === 'ko' ? STAGE.rightBound - 20 : STAGE.rightBound;
+    f.x = Math.max(minX, Math.min(maxX, f.x));
 
     if (f.trailHealth > f.health) {
       f.trailHealth = Math.max(f.health, f.trailHealth - 0.55);
@@ -2247,8 +2251,8 @@
     const dx = p2.x - p1.x;
     const push = (minDist - Math.abs(dx)) / 2;
     const dir = dx >= 0 ? 1 : -1;
-    p1.x = Math.max(STAGE.leftBound, p1.x - dir * push);
-    p2.x = Math.min(STAGE.rightBound, p2.x + dir * push);
+    p1.x = Math.max(STAGE.leftBound, Math.min(STAGE.rightBound, p1.x - dir * push));
+    p2.x = Math.max(STAGE.leftBound, Math.min(STAGE.rightBound, p2.x + dir * push));
   }
 
   function drawDebugBoxes() {
