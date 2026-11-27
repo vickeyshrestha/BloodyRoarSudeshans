@@ -2519,7 +2519,7 @@
     const speedMult = excited ? 1.55 : 1.0;
 
     ctx.save();
-    const hoodieCycle = [0, 1, 2, 1];
+    const hoodieCycle = [0, 0, 1, 2, 2, 1];
     for (let i = 0; i < bgSpectators.length; i++) {
       const sp = bgSpectators[i];
       let img;
@@ -2528,10 +2528,10 @@
       let sy = 1;
 
       if (sp.isHoodie) {
-        const frameStep = Math.floor((globalTime * (excited ? 0.14 : 0.08) + sp.phase) % hoodieCycle.length);
+        const frameStep = Math.floor((globalTime * (excited ? 0.045 : 0.024) + sp.phase) % hoodieCycle.length);
         const frameIdx = hoodieCycle[frameStep];
         img = NPC_HOODIE_FRAMES[frameIdx];
-        bounceY = frameIdx === 1 ? -8 : 0;
+        bounceY = frameIdx === 1 ? -6 : 0;
       } else {
         img = NPC_SPECTATOR_IMAGES[sp.imgIdx];
         const t = globalTime * sp.speed * speedMult + sp.phase;
