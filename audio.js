@@ -10,6 +10,9 @@ const SoundFX = (() => {
   let bossBgmActive = false;
   const roundSounds = {};
   let fightVoice = null;
+  let koVoice = null;
+  let winVoice = null;
+  let loseVoice = null;
 
   function initBGM() {
     if (!bgm) {
@@ -294,6 +297,9 @@ const SoundFX = (() => {
       if (fightVoice) {
         fightVoice.muted = muted;
       }
+      if (koVoice) koVoice.muted = muted;
+      if (winVoice) winVoice.muted = muted;
+      if (loseVoice) loseVoice.muted = muted;
       return muted;
     },
     playMenuSelect() {
@@ -381,9 +387,38 @@ const SoundFX = (() => {
       playTone(440, 660, 0.18, 'square', 0.12, 0.12);
     },
     playKO() {
+      if (!muted) {
+        if (!koVoice) {
+          koVoice = new Audio('assets/knockout.wav');
+          koVoice.volume = 0.95;
+        }
+        koVoice.muted = muted;
+        koVoice.currentTime = 0;
+        koVoice.play().catch(() => {});
+      }
       playNoiseBurst(0.42, 550, 0.35, 'lowpass');
       playTone(440, 110, 0.45, 'sawtooth', 0.22);
       playTone(330, 82, 0.52, 'square', 0.18, 0.12);
+    },
+    playWin() {
+      if (muted) return;
+      if (!winVoice) {
+        winVoice = new Audio('assets/you_win.wav');
+        winVoice.volume = 0.95;
+      }
+      winVoice.muted = muted;
+      winVoice.currentTime = 0;
+      winVoice.play().catch(() => {});
+    },
+    playLose() {
+      if (muted) return;
+      if (!loseVoice) {
+        loseVoice = new Audio('assets/you_lose.wav');
+        loseVoice.volume = 0.95;
+      }
+      loseVoice.muted = muted;
+      loseVoice.currentTime = 0;
+      loseVoice.play().catch(() => {});
     }
   };
 })();

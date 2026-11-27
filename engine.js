@@ -1879,7 +1879,7 @@
     shakeIntensity = 9;
 
     gameMode = 'ROUND_END';
-    showBanner('K.O.!', `${winner.data.name.toUpperCase()} TAKES THE ROUND`, 180); // 3 seconds
+    showBanner('K.O.!', `${winner.data.name.toUpperCase()} TAKES THE ROUND`, 300); // 5 seconds (+2s)
     updateHUD();
   }
 
@@ -1911,6 +1911,7 @@
           if (arcadeStage < 5) {
             gameMode = 'POST_MATCH_BANNER';
             showBanner('YOU WIN!', `ADVANCING TO ${arcadeStage + 1 === 5 ? 'FINAL STAGE' : `STAGE ${arcadeStage + 1}`}`, 240);
+            SoundFX.playWin();
             postMatchCallback = () => {
               arcadeStage++;
               startMatch(p1.data, arcadeOpponents[arcadeStage - 1]);
@@ -1931,6 +1932,7 @@
           });
           gameMode = 'POST_MATCH_BANNER';
           showBanner('YOU WIN!', 'TOURNAMENT CHAMPION!', 240);
+          SoundFX.playWin();
           postMatchCallback = () => {
             SoundFX.stopBossBGM();
             hudEl.classList.add('hidden');
@@ -1954,6 +1956,7 @@
           // Arcade loss: do not store unfinished run on scoreboard
           gameMode = 'POST_MATCH_BANNER';
           showBanner('YOU LOSE!', `${p2.data.name.toUpperCase()} TAKES THE MATCH`, 240);
+          SoundFX.playLose();
           postMatchCallback = () => {
             SoundFX.stopBossBGM();
             hudEl.classList.add('hidden');
@@ -2011,6 +2014,8 @@
       `${p1Won ? onlineHostName : onlineGuestName} wins ${p1.roundsWon} - ${p2.roundsWon}!`,
       240
     );
+    if (localWon) SoundFX.playWin();
+    else SoundFX.playLose();
     postMatchCallback = () => {
       hudEl.classList.add('hidden');
       showMatchEndScreen(
