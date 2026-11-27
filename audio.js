@@ -243,6 +243,14 @@ const SoundFX = (() => {
       osc.stop(now + dur);
       sub.stop(now + dur);
       playNoiseBurst(0.38 * scale, 520, 0.24 * scale, 'bandpass', 0.02);
+    } else if (beastId === 'suwas') {
+      // Monkey: Rapid energetic "Ooh-ooh-aah-aah!" screech chirps
+      const chirps = shortCall ? 2 : 4;
+      for (let i = 0; i < chirps; i++) {
+        const delay = i * 0.085;
+        playTone(460 + (i % 2) * 140, 880 + (i % 2) * 180, 0.065, 'triangle', 0.20 * scale, delay);
+        playTone(760, 420, 0.055, 'sawtooth', 0.12 * scale, delay + 0.03);
+      }
     } else if (beastId === 'nirbhaya') {
       // Ant: Rapid insectoid mandible clicks + chitinous buzz
       const clicks = shortCall ? 3 : 6;

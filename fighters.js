@@ -198,6 +198,28 @@ const FIGHTERS = [
       beastHorn: '#734019',
       eye: '#ffd166'
     }
+  },
+  {
+    id: 'suwas',
+    name: 'Suwas Thapa',
+    beastName: 'Monkey',
+    portraitSrc: 'assets/Suwas.jpg',
+    desc: 'Relentless Muay-Thai brawler who unleashes agile Monkey ferocity & rapid sweeps.',
+    stats: { speed: 9, power: 7, range: 7, health: 102, jumpForce: -14.5, scale: 1.0 },
+    palette: {
+      skin: '#b8825e',
+      skinShadow: '#784e34',
+      hair: '#141318',
+      top: '#243554',
+      topShadow: '#152036',
+      pants: '#171920',
+      accent: '#d44234',
+      beastMain: '#9c7838',
+      beastDark: '#573f19',
+      beastLight: '#c7a158',
+      beastHorn: '#d44234',
+      eye: '#ffd166'
+    }
   }
 ];
 
@@ -285,7 +307,15 @@ function preloadAllSprites() {
     'beemal_human_low_kick',
     'beemal_beast_crouch',
     'beemal_beast_low_punch',
-    'beemal_beast_low_kick'
+    'beemal_beast_low_kick',
+    'suwas_human_crouch',
+    'suwas_human_low_punch',
+    'suwas_human_low_kick',
+    'suwas_human_ko',
+    'suwas_beast_crouch',
+    'suwas_beast_low_punch',
+    'suwas_beast_low_kick',
+    'suwas_beast_ko'
   ].forEach(loadSpriteKey);
 }
 
