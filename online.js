@@ -308,6 +308,13 @@ const OnlineManager = (() => {
     return data || [];
   }
 
+  async function deleteTrafficLogAsAdmin(username, password, id) {
+    const adminSb = getAdminClient(username, password);
+    if (!adminSb) return false;
+    const { error } = await adminSb.from('br_traffic_logs').delete().eq('id', id);
+    return !error;
+  }
+
   return {
     fetchHighScores,
     submitHighScore,
@@ -316,6 +323,7 @@ const OnlineManager = (() => {
     clearAllHighScoresAsAdmin,
     logPlayerVisit,
     fetchTrafficLogsAsAdmin,
+    deleteTrafficLogAsAdmin,
     listWaitingRooms,
     hostRoom,
     closeHostedRoom,

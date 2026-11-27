@@ -913,17 +913,26 @@
     }
     const uniqueCountries = new Set(logs.map((l) => l.location || 'Unknown'));
     adminTrafficSummary.textContent = `Recent Visits: ${logs.length} | Distinct Locations: ${uniqueCountries.size}`;
-    adminTrafficList.innerHTML = logs
-      .map((l) => {
-        const dt = l.created_at ? new Date(l.created_at).toLocaleString() : '';
-        const fighterName = l.fighter_id ? getFighterById(l.fighter_id).name : '-';
-        return `
-        <div class="score-row">
-          <span><span class="score-player-name">${escapeHtml(l.player_name)}</span> (<span class="score-char-name">${escapeHtml(fighterName)}</span>) &bull; ${escapeHtml(l.mode.toUpperCase())}</span>
+    adminTrafficList.innerHTML = '';
+    logs.forEach((l) => {
+      const dt = l.created_at ? new Date(l.created_at).toLocaleString() : '';
+      const fighterName = l.fighter_id ? getFighterById(l.fighter_id).name : '-';
+      const row = document.createElement('div');
+      row.className = 'score-row';
+      row.innerHTML = `
+        <span><span class="score-player-name">${escapeHtml(l.player_name)}</span> (<span class="score-char-name">${escapeHtml(fighterName)}</span>) &bull; ${escapeHtml(l.mode.toUpperCase())}</span>
+        <span style="display:flex; align-items:center; gap:8px;">
           <span class="score-loc"><strong>${escapeHtml(l.location || 'Unknown')}</strong> &bull; ${escapeHtml(dt)}</span>
-        </div>`;
-      })
-      .join('');
+          <button class="mini-btn" style="background:#7a1622; border-color:#ff4d6d;">DELETE</button>
+        </span>
+      `;
+      row.querySelector('button').addEventListener('click', async () => {
+        if (!adminSession) return;
+        const deleted = await OnlineManager.deleteTrafficLogAsAdmin(adminSession.username, adminSession.password, l.id);
+        if (deleted) await loadAdminTraffic();
+      });
+      adminTrafficList.appendChild(row);
+    });
   }
 
   async function loadAdminScores() {
@@ -1290,7 +1299,7 @@
     p1 = createFighterState(f1Data, 260, 1, false);
     p2 = createFighterState(f2Data, 700, -1, !onlineRole);
     if (!onlineRole && arcadeStage === 5) {
-      p2.maxHealth = Math.round(p2.maxHealth * 2.2);
+      p2.maxHealth = Math.round(p2.maxHealth * 2.0);
       p2.health = p2.maxHealth;
       p2.trailHealth = p2.maxHealth;
       SoundFX.startBossBGM();
