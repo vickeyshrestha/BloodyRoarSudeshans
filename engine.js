@@ -22,6 +22,7 @@
   });
   let stageBgDeck = [];
   let lastStageBgIdx = -1;
+  let currentStageBgIdx = 0;
   let currentStageBg = STAGE_BG_IMAGES[0];
   const NPC_SPECTATOR_IMAGES = [1, 2, 3, 4, 5].map((n) => {
     const img = new Image();
@@ -139,26 +140,35 @@
     }
   }
 
-  function pickRandomStageBackground() {
-    if (stageBgDeck.length === 0) {
-      stageBgDeck = STAGE_BG_IMAGES.map((_, idx) => idx);
-      for (let i = stageBgDeck.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [stageBgDeck[i], stageBgDeck[j]] = [stageBgDeck[j], stageBgDeck[i]];
+  function pickRandomStageBackground(forcedIdx = null, forcedWeather = null) {
+    let nextIdx;
+    if (typeof forcedIdx === 'number' && STAGE_BG_IMAGES[forcedIdx]) {
+      nextIdx = forcedIdx;
+    } else {
+      if (stageBgDeck.length === 0) {
+        stageBgDeck = STAGE_BG_IMAGES.map((_, idx) => idx);
+        for (let i = stageBgDeck.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [stageBgDeck[i], stageBgDeck[j]] = [stageBgDeck[j], stageBgDeck[i]];
+        }
+        // Never repeat the immediately previous background on reshuffle
+        if (stageBgDeck.length > 1 && stageBgDeck[stageBgDeck.length - 1] === lastStageBgIdx) {
+          const swapIdx = 0;
+          [stageBgDeck[stageBgDeck.length - 1], stageBgDeck[swapIdx]] = [
+            stageBgDeck[swapIdx],
+            stageBgDeck[stageBgDeck.length - 1]
+          ];
+        }
       }
-      // Never repeat the immediately previous background on reshuffle
-      if (stageBgDeck.length > 1 && stageBgDeck[stageBgDeck.length - 1] === lastStageBgIdx) {
-        const swapIdx = 0;
-        [stageBgDeck[stageBgDeck.length - 1], stageBgDeck[swapIdx]] = [
-          stageBgDeck[swapIdx],
-          stageBgDeck[stageBgDeck.length - 1]
-        ];
-      }
+      nextIdx = stageBgDeck.pop();
     }
-    const nextIdx = stageBgDeck.pop();
     lastStageBgIdx = nextIdx;
+    currentStageBgIdx = nextIdx;
     currentStageBg = STAGE_BG_IMAGES[nextIdx];
-    if (weatherSystem) weatherSystem.resetForStage();
+    if (weatherSystem) {
+      if (forcedWeather) weatherSystem.setPreset(forcedWeather);
+      else weatherSystem.resetForStage();
+    }
     spawnBackgroundProps();
     spawnBackgroundSpectators();
   }
@@ -1645,6 +1655,7 @@
   }
 
   function applyTransformKnockback(fighter, opponent) {
+    if (onlineRole === 'guest') return;
     const dir = opponent.x >= fighter.x ? 1 : -1;
     opponent.health = Math.max(0, opponent.health - 6);
     opponent.vx = dir * 28;
@@ -2043,6 +2054,7 @@
   }
 
   function checkAttackHit(attacker, defender, spec) {
+    if (onlineRole === 'guest') return;
     if (defender.state === 'ko' || defender.state === 'transform' || defender.state === 'knockdown') return;
 
     const defenderCrouching =
@@ -2938,6 +2950,8 @@
       roundsWon: f.roundsWon,
       state: f.state,
       stateFrame: f.stateFrame,
+      hitstunFrames: f.hitstunFrames || 0,
+      knockdownFrames: f.knockdownFrames || 0,
       walkFrame: f.walkFrame,
       comboCount: f.comboCount,
       hitFlash: f.hitFlash,
@@ -2952,8 +2966,10 @@
       const dy = snap.y - f.y;
       if (Math.abs(dx) > 110) f.x = snap.x;
       else if (Math.abs(dx) > 32) f.x += dx * 0.35;
-      if (Math.abs(dy) > 90) f.y = snap.y;
-      else if (Math.abs(dy) > 28) f.y += dy * 0.35;
+      if (Math.abs(dy) > 95) {
+        f.y = snap.y;
+        f.vy = snap.vy;
+      }
 
       f.health = snap.health;
       f.trailHealth = snap.trailHealth;
@@ -2964,15 +2980,24 @@
       f.hitFlash = snap.hitFlash;
       f.blockRecoil = snap.blockRecoil;
 
-      if (
+      const isAuthOverride =
         snap.state === 'hitstun' ||
         snap.state === 'knockdown' ||
         snap.state === 'ko' ||
         snap.state === 'block' ||
-        snap.state === 'victory'
-      ) {
+        snap.state === 'victory' ||
+        snap.state === 'transform';
+      const wasAuthOverride =
+        f.state === 'hitstun' ||
+        f.state === 'knockdown' ||
+        f.state === 'ko' ||
+        f.state === 'block';
+
+      if (isAuthOverride || wasAuthOverride) {
         f.state = snap.state;
         f.stateFrame = snap.stateFrame;
+        f.hitstunFrames = snap.hitstunFrames ?? 0;
+        f.knockdownFrames = snap.knockdownFrames ?? 0;
         f.vx = snap.vx;
         f.vy = snap.vy;
         f.facing = snap.facing;
@@ -2985,11 +3010,15 @@
     const dy = snap.y - f.y;
     if (Math.abs(dx) > 95) f.x = snap.x;
     else f.x += dx * 0.5;
-    if (Math.abs(dy) > 75) f.y = snap.y;
-    else f.y += dy * 0.5;
+    if (Math.abs(dy) > 75) {
+      f.y = snap.y;
+      f.vy = snap.vy;
+    } else {
+      f.y += dy * 0.5;
+      f.vy = snap.vy;
+    }
 
     f.vx = snap.vx;
-    f.vy = snap.vy;
     f.facing = snap.facing;
     f.health = snap.health;
     f.trailHealth = snap.trailHealth;
@@ -2998,6 +3027,8 @@
     f.roundsWon = snap.roundsWon;
     f.state = snap.state;
     f.stateFrame = snap.stateFrame;
+    f.hitstunFrames = snap.hitstunFrames ?? 0;
+    f.knockdownFrames = snap.knockdownFrames ?? 0;
     f.walkFrame = snap.walkFrame;
     f.comboCount = snap.comboCount;
     f.hitFlash = snap.hitFlash;
@@ -3007,6 +3038,13 @@
   let lastGuestHudSig = '';
   function applyRemoteState(st) {
     if (!st || onlineRole !== 'guest') return;
+    if (
+      typeof st.stageIdx === 'number' &&
+      (st.stageIdx !== currentStageBgIdx ||
+        (weatherSystem && st.weather && weatherSystem.preset !== st.weather))
+    ) {
+      pickRandomStageBackground(st.stageIdx, st.weather || null);
+    }
     if (st.gameMode && st.gameMode !== gameMode) {
       gameMode = st.gameMode;
       if (gameMode === 'ROUND_INTRO' || gameMode === 'FIGHT') {
@@ -3154,6 +3192,8 @@
             gameMode,
             roundNumber,
             roundTimer,
+            stageIdx: currentStageBgIdx,
+            weather: weatherSystem ? weatherSystem.preset : 'sunny',
             p1: packFighterState(p1),
             p2: packFighterState(p2)
           });
