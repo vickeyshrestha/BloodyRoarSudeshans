@@ -14,12 +14,111 @@ class WeatherSystem {
     this.time = 0;
     this.sunFromRight = false;
     this.clouds = [];
+    this.cloudStamps = { light: [], dark: [] };
     this.drops = [];
     this.splashes = [];
     this.flakes = [];
     this.motes = [];
     this.rays = [];
+    this._initCloudStamps();
     this.resetForStage(false);
+  }
+
+  _initCloudStamps() {
+    if (typeof document === 'undefined') return;
+    for (let i = 0; i < 4; i++) {
+      this.cloudStamps.light.push(this._bakeVolumetricCloud(260, 110, 13.7 + i * 31.3, false));
+      this.cloudStamps.dark.push(this._bakeVolumetricCloud(260, 110, 91.1 + i * 27.9, true));
+    }
+  }
+
+  _hash2(ix, iy, seed) {
+    const n = Math.sin(ix * 127.1 + iy * 311.7 + seed * 74.7) * 43758.5453123;
+    return n - Math.floor(n);
+  }
+
+  _vnoise(x, y, seed) {
+    const ix = Math.floor(x);
+    const iy = Math.floor(y);
+    const fx = x - ix;
+    const fy = y - iy;
+    const ux = fx * fx * (3 - 2 * fx);
+    const uy = fy * fy * (3 - 2 * fy);
+    const a = this._hash2(ix, iy, seed);
+    const b = this._hash2(ix + 1, iy, seed);
+    const c = this._hash2(ix, iy + 1, seed);
+    const d = this._hash2(ix + 1, iy + 1, seed);
+    return a + (b - a) * ux + (c - a) * uy + (a - b - c + d) * ux * uy;
+  }
+
+  _fbm(x, y, seed) {
+    let v = 0;
+    let amp = 0.52;
+    let freq = 1;
+    for (let o = 0; o < 4; o++) {
+      v += amp * this._vnoise(x * freq, y * freq, seed + o * 17.3);
+      freq *= 2.05;
+      amp *= 0.48;
+    }
+    return v;
+  }
+
+  _cloudDensity(nx, ny, seed) {
+    // Cumulus silhouette: flatter base around ny = 0.25, billowy domes above
+    const rx = nx / 0.88;
+    const ry = ny > 0 ? (ny / 0.42) : (ny / 0.82);
+    const dist = Math.sqrt(rx * rx + ry * ry);
+    if (dist >= 1.05) return 0;
+    const falloff = Math.max(0, 1 - dist * dist);
+    const n = this._fbm(nx * 2.8 + 4.0, ny * 3.1 + 4.0, seed);
+    const raw = falloff * 0.85 + n * 0.62 - 0.56;
+    return Math.max(0, Math.min(1, raw * 2.1));
+  }
+
+  _bakeVolumetricCloud(w, h, seed, dark) {
+    const c = document.createElement('canvas');
+    c.width = w;
+    c.height = h;
+    const g = c.getContext('2d');
+    const img = g.createImageData(w, h);
+    const data = img.data;
+
+    for (let py = 0; py < h; py++) {
+      const ny = (py / h) * 2 - 1.15;
+      for (let px = 0; px < w; px++) {
+        const nx = (px / w) * 2 - 1;
+        const d = this._cloudDensity(nx, ny, seed);
+        if (d <= 0.01) continue;
+
+        // Sample toward upper-left sunlight for 3D self-shadowing
+        const dSun = this._cloudDensity(nx - 0.055, ny - 0.085, seed);
+        const shadowTerm = Math.max(0, dSun - d);
+        const heightTerm = Math.max(0, Math.min(1, 0.72 - ny * 0.75));
+        const light = Math.max(0, Math.min(1, 0.62 * heightTerm + 0.55 * Math.exp(-shadowTerm * 4.5) - d * 0.12));
+
+        let r, gr, b;
+        if (dark) {
+          // Moody storm cloud palette
+          r = Math.round(52 + light * 92);
+          gr = Math.round(62 + light * 98);
+          b = Math.round(80 + light * 108);
+        } else {
+          // Sunlit realistic cumulus palette
+          r = Math.round(135 + light * 120);
+          gr = Math.round(150 + light * 103);
+          b = Math.round(175 + light * 76);
+        }
+
+        const idx = (py * w + px) * 4;
+        data[idx] = Math.min(255, r);
+        data[idx + 1] = Math.min(255, gr);
+        data[idx + 2] = Math.min(255, b);
+        data[idx + 3] = Math.round(Math.min(1, d * 1.15) * 235);
+      }
+    }
+
+    g.putImageData(img, 0, 0);
+    return c;
   }
 
   isCompactDevice() {
@@ -57,17 +156,21 @@ class WeatherSystem {
     this.rays = [];
 
     const compact = this.isCompactDevice();
+    const isStorm = this.preset === 'rain';
+    const cloudCount =
+      this.preset === 'cloudy'
+        ? (compact ? 7 : 10)
+        : this.preset === 'rain'
+          ? (compact ? 6 : 9)
+          : (compact ? 5 : 7);
 
-    if (this.preset === 'cloudy') {
-      const count = compact ? 6 : 9;
-      for (let i = 0; i < count; i++) {
-        this.clouds.push(this._makeCloud(Math.random() * this.width, i < count - 2 ? Math.random() * 0.54 : 0.62 + Math.random() * 0.25));
-      }
-    } else if (this.preset === 'rain') {
-      const cloudCount = compact ? 4 : 6;
-      for (let i = 0; i < cloudCount; i++) {
-        this.clouds.push(this._makeCloud(Math.random() * this.width, 0.1 + Math.random() * 0.4, true));
-      }
+    for (let i = 0; i < cloudCount; i++) {
+      const z = (i / Math.max(1, cloudCount - 1)) * 0.85 + Math.random() * 0.15;
+      this.clouds.push(this._makeCloud(Math.random() * this.width, Math.min(1, z), isStorm));
+    }
+    this.clouds.sort((a, b) => a.z - b.z);
+
+    if (this.preset === 'rain') {
       const dropCount = compact ? 75 : 135;
       for (let i = 0; i < dropCount; i++) {
         this.drops.push(this._makeDrop(true));
@@ -97,26 +200,18 @@ class WeatherSystem {
   }
 
   _makeCloud(x, z, dark = false) {
-    const scale = 0.55 + z * 0.85;
-    const puffCount = 4 + Math.floor(Math.random() * 3);
-    const puffs = [];
-    for (let i = 0; i < puffCount; i++) {
-      const t = puffCount === 1 ? 0.5 : i / (puffCount - 1);
-      puffs.push({
-        ox: (t - 0.5) * 95 * scale + (Math.random() - 0.5) * 14 * scale,
-        oy: -Math.sin(t * Math.PI) * 16 * scale + (Math.random() - 0.5) * 6 * scale,
-        r: (22 + Math.sin(t * Math.PI) * 18 + Math.random() * 8) * scale
-      });
-    }
+    const scale = 0.65 + z * 0.95;
+    const stamps = dark ? this.cloudStamps.dark : this.cloudStamps.light;
+    const stampIdx = stamps.length ? Math.floor(Math.random() * stamps.length) : 0;
     return {
       x,
-      y: 34 + (1 - z) * 95 + Math.random() * 22,
+      y: 12 + (1 - z) * 78 + Math.random() * 18,
       z,
       scale,
-      speed: (0.14 + z * 0.34) * (0.85 + Math.random() * 0.3),
-      alpha: dark ? 0.22 + z * 0.14 : 0.24 + z * 0.2,
+      speed: (0.12 + z * 0.36) * (0.85 + Math.random() * 0.3),
+      alpha: dark ? 0.52 + z * 0.25 : (this.preset === 'sunny' ? 0.42 + z * 0.24 : 0.58 + z * 0.26),
       dark,
-      puffs
+      stampIdx
     };
   }
 
@@ -165,14 +260,13 @@ class WeatherSystem {
     if (!this.enabled) return;
     this.time += dtScale;
 
-    if (this.preset === 'cloudy' || this.preset === 'rain') {
-      for (let i = 0; i < this.clouds.length; i++) {
-        const c = this.clouds[i];
-        c.x += c.speed * dtScale;
-        const wrapMargin = 140 * c.scale;
-        if (c.x - wrapMargin > this.width) {
-          c.x = -wrapMargin;
-        }
+    // Always drift top-horizon 3D clouds in real time across all weather presets
+    for (let i = 0; i < this.clouds.length; i++) {
+      const c = this.clouds[i];
+      c.x += c.speed * dtScale;
+      const wrapMargin = 160 * c.scale;
+      if (c.x - wrapMargin > this.width) {
+        c.x = -wrapMargin;
       }
     }
 
@@ -245,38 +339,14 @@ class WeatherSystem {
   }
 
   _drawCloudObject(ctx, c) {
+    const stamps = c.dark ? this.cloudStamps.dark : this.cloudStamps.light;
+    const stamp = stamps[c.stampIdx];
+    if (!stamp) return;
+    const drawW = stamp.width * c.scale;
+    const drawH = stamp.height * c.scale;
     ctx.save();
-    ctx.translate(c.x, c.y);
     ctx.globalAlpha = c.alpha;
-
-    // Subtle 3D underside shading
-    ctx.fillStyle = c.dark ? '#465063' : '#7f8da3';
-    for (let i = 0; i < c.puffs.length; i++) {
-      const p = c.puffs[i];
-      ctx.beginPath();
-      ctx.arc(p.ox, p.oy + p.r * 0.22, p.r * 0.94, 0, Math.PI * 2);
-      ctx.fill();
-    }
-
-    // Mid-tone cloud body
-    ctx.fillStyle = c.dark ? '#69758a' : '#cfd8e6';
-    for (let i = 0; i < c.puffs.length; i++) {
-      const p = c.puffs[i];
-      ctx.beginPath();
-      ctx.arc(p.ox, p.oy, p.r, 0, Math.PI * 2);
-      ctx.fill();
-    }
-
-    // Top-lit highlight edge
-    ctx.fillStyle = c.dark ? '#8794aa' : '#f4f8ff';
-    ctx.globalAlpha = c.alpha * 0.72;
-    for (let i = 0; i < c.puffs.length; i++) {
-      const p = c.puffs[i];
-      ctx.beginPath();
-      ctx.arc(p.ox - p.r * 0.08, p.oy - p.r * 0.18, p.r * 0.72, 0, Math.PI * 2);
-      ctx.fill();
-    }
-
+    ctx.drawImage(stamp, c.x - drawW / 2, c.y - drawH * 0.35, drawW, drawH);
     ctx.restore();
   }
 
@@ -350,24 +420,26 @@ class WeatherSystem {
   drawBackgroundWeather(ctx) {
     if (!this.enabled) return;
 
-    if (this.preset === 'cloudy') {
-      for (let i = 0; i < this.clouds.length; i++) {
-        if (this.clouds[i].z < 0.55) this._drawCloudObject(ctx, this.clouds[i]);
-      }
-    } else if (this.preset === 'rain') {
+    if (this.preset === 'rain') {
       ctx.save();
       ctx.fillStyle = 'rgba(18, 28, 46, 0.16)';
       ctx.fillRect(0, 0, this.width, this.height);
       ctx.restore();
-      for (let i = 0; i < this.clouds.length; i++) {
-        this._drawCloudObject(ctx, this.clouds[i]);
-      }
-      this._drawRainLayer(ctx, false);
     } else if (this.preset === 'snow') {
       ctx.save();
       ctx.fillStyle = 'rgba(205, 224, 245, 0.07)';
       ctx.fillRect(0, 0, this.width, this.height);
       ctx.restore();
+    }
+
+    // Always draw real-time drifting 3D volumetric clouds across the top horizon
+    for (let i = 0; i < this.clouds.length; i++) {
+      this._drawCloudObject(ctx, this.clouds[i]);
+    }
+
+    if (this.preset === 'rain') {
+      this._drawRainLayer(ctx, false);
+    } else if (this.preset === 'snow') {
       this._drawSnowLayer(ctx, false);
     } else if (this.preset === 'sunny') {
       const originX = this.sunFromRight ? this.width - 55 : 55;
@@ -432,16 +504,7 @@ class WeatherSystem {
   drawForegroundWeather(ctx) {
     if (!this.enabled) return;
 
-    if (this.preset === 'cloudy') {
-      for (let i = 0; i < this.clouds.length; i++) {
-        if (this.clouds[i].z >= 0.55) {
-          const origAlpha = this.clouds[i].alpha;
-          this.clouds[i].alpha = origAlpha * 0.42; // keep foreground high-sky wisps subtle
-          this._drawCloudObject(ctx, this.clouds[i]);
-          this.clouds[i].alpha = origAlpha;
-        }
-      }
-    } else if (this.preset === 'rain') {
+    if (this.preset === 'rain') {
       this._drawRainLayer(ctx, true);
       if (this.splashes.length) {
         ctx.save();
