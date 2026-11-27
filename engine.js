@@ -182,6 +182,7 @@
   let introPhase = 0; // 0: none, 1: ROUND X flash, 2: FIGHT! flash
   let introTimer = 0;
   let postMatchCallback = null;
+  let lastRoundWinner = null;
   let p1BeastBannerTimer = 0;
   let p2BeastBannerTimer = 0;
   let vsTimer = 0;
@@ -1870,6 +1871,7 @@
     winner.state = 'victory';
     winner.roundsWon++;
 
+    lastRoundWinner = winner;
     SoundFX.playKO();
     spawnDust(loser.x, STAGE.groundY);
     spawnDust(loser.x - 18, STAGE.groundY);
@@ -1879,6 +1881,7 @@
     shakeIntensity = 9;
 
     gameMode = 'ROUND_END';
+    lastRoundWinner = winner;
     showBanner('K.O.!', `${winner.data.name.toUpperCase()} TAKES THE ROUND`, 300); // 5 seconds (+2s)
     updateHUD();
   }
@@ -1895,6 +1898,7 @@
       p2.state = 'victory';
       winner = p2;
     }
+    lastRoundWinner = winner;
     SoundFX.playKO();
     showBanner('TIME OVER!', winner ? `${winner.data.name.toUpperCase()} WINS ROUND` : 'DRAW ROUND', 180); // 3 seconds
     updateHUD();
@@ -1978,8 +1982,25 @@
         handleOnlineMatchEnd(payload);
       }
     } else {
-      roundNumber++;
-      startRound();
+      const localWon =
+        onlineRole === 'guest' ? lastRoundWinner === p2 : lastRoundWinner === p1;
+      const isDraw = !lastRoundWinner;
+      gameMode = 'POST_MATCH_BANNER';
+      if (isDraw) {
+        showBanner('DRAW ROUND!', `ROUND ${roundNumber} TIED`, 180);
+      } else {
+        showBanner(
+          localWon ? 'YOU WIN!' : 'YOU LOSE!',
+          `ROUND ${roundNumber} COMPLETE`,
+          180
+        );
+        if (localWon) SoundFX.playWin();
+        else SoundFX.playLose();
+      }
+      postMatchCallback = () => {
+        roundNumber++;
+        startRound();
+      };
     }
   }
 
