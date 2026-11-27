@@ -72,17 +72,17 @@
 
   function spawnBackgroundSpectators() {
     bgSpectators = [];
-    const maxCount = isMobileDevice() ? 3 : 6;
-    const minCount = isMobileDevice() ? 2 : 3;
-    const count = minCount + Math.floor(Math.random() * (maxCount - minCount + 1));
     const deck = [0, 1, 2, 3, 4, 'hoodie'];
     for (let i = deck.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [deck[i], deck[j]] = [deck[j], deck[i]];
     }
+    const maxCount = Math.min(deck.length, isMobileDevice() ? 3 : 6);
+    const minCount = isMobileDevice() ? 2 : 3;
+    const count = minCount + Math.floor(Math.random() * (maxCount - minCount + 1));
     const slotW = (STAGE.width - 150) / count;
     for (let i = 0; i < count; i++) {
-      const pick = Math.random() < 0.25 ? deck[Math.floor(Math.random() * deck.length)] : deck[i % deck.length];
+      const pick = deck[i];
       const isHoodie = pick === 'hoodie';
       const x = 75 + i * slotW + Math.random() * Math.max(20, slotW - 50);
       bgSpectators.push({
@@ -1290,7 +1290,7 @@
     p1 = createFighterState(f1Data, 260, 1, false);
     p2 = createFighterState(f2Data, 700, -1, !onlineRole);
     if (!onlineRole && arcadeStage === 5) {
-      p2.maxHealth *= 3;
+      p2.maxHealth = Math.round(p2.maxHealth * 2.2);
       p2.health = p2.maxHealth;
       p2.trailHealth = p2.maxHealth;
       SoundFX.startBossBGM();
