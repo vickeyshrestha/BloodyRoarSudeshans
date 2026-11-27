@@ -702,7 +702,7 @@ function drawSpriteFighter(
     case 'knockdown':
       rot = -Math.PI / 2;
       offsetY = -14;
-      offsetX = -drawH * 0.35;
+      offsetX = drawH * 0.5;
       spriteAlpha = f.state === 'ko' ? 0.82 : 1;
       break;
     case 'victory':
