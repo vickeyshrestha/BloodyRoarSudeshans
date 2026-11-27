@@ -23,6 +23,37 @@
   let stageBgDeck = [];
   let lastStageBgIdx = -1;
   let currentStageBg = STAGE_BG_IMAGES[0];
+  let bgSpectators = [];
+
+  function spawnBackgroundSpectators() {
+    bgSpectators = [];
+    const count = isMobileDevice() ? 3 : 4 + Math.floor(Math.random() * 3);
+    const behaviors = ['cheer', 'dance', 'jump_cheer', 'clap', 'camera'];
+    const shirts = ['#c93b4b', '#3268a8', '#d98a2b', '#3a8f5d', '#7b49a8', '#d45079', '#2b9aa0'];
+    const pants = ['#1a1e29', '#2b241d', '#233042', '#262930'];
+    const skins = ['#c99470', '#9e6b4a', '#dfb08c', '#7d4e34'];
+    const hairs = ['#141418', '#3b2518', '#523a28', '#d6b45a'];
+    const hats = ['none', 'cap', 'headband', 'none', 'beanie'];
+    const slotW = (STAGE.width - 160) / count;
+    for (let i = 0; i < count; i++) {
+      const x = 80 + i * slotW + Math.random() * Math.max(20, slotW - 40);
+      const scale = 0.56 + Math.random() * 0.14;
+      bgSpectators.push({
+        x,
+        y: STAGE.floorTopY + 12 + Math.random() * 10,
+        scale,
+        facing: x < STAGE.width / 2 ? 1 : -1,
+        behavior: behaviors[Math.floor(Math.random() * behaviors.length)],
+        shirt: shirts[Math.floor(Math.random() * shirts.length)],
+        pants: pants[Math.floor(Math.random() * pants.length)],
+        skin: skins[Math.floor(Math.random() * skins.length)],
+        hair: hairs[Math.floor(Math.random() * hairs.length)],
+        hat: hats[Math.floor(Math.random() * hats.length)],
+        phase: Math.random() * Math.PI * 2,
+        speed: 0.09 + Math.random() * 0.06
+      });
+    }
+  }
 
   function pickRandomStageBackground() {
     if (stageBgDeck.length === 0) {
@@ -43,6 +74,7 @@
     const nextIdx = stageBgDeck.pop();
     lastStageBgIdx = nextIdx;
     currentStageBg = STAGE_BG_IMAGES[nextIdx];
+    spawnBackgroundSpectators();
   }
 
   // DOM References
@@ -2414,6 +2446,147 @@
     renderStageToContext(ctx);
   }
 
+  function drawBackgroundSpectators() {
+    if (!bgSpectators.length) return;
+    const excited =
+      gameMode === 'ROUND_END' ||
+      (p1 && p1.comboCount >= 2) ||
+      (p2 && p2.comboCount >= 2);
+    const speedMult = excited ? 1.85 : 1.0;
+
+    ctx.save();
+    for (let i = 0; i < bgSpectators.length; i++) {
+      const sp = bgSpectators[i];
+      const t = globalTime * sp.speed * speedMult + sp.phase;
+      const s = sp.scale;
+
+      let bounceY = 0;
+      let swayX = 0;
+      let lArmAng = -0.3;
+      let rArmAng = 0.3;
+
+      if (sp.behavior === 'dance') {
+        swayX = Math.sin(t) * 5;
+        bounceY = -Math.abs(Math.cos(t * 2)) * 4;
+        lArmAng = -0.9 + Math.sin(t * 2) * 0.55;
+        rArmAng = 0.9 + Math.cos(t * 2) * 0.55;
+      } else if (sp.behavior === 'jump_cheer' || excited) {
+        bounceY = -Math.abs(Math.sin(t * 1.4)) * (excited ? 12 : 8);
+        lArmAng = -2.3 + Math.sin(t * 2.8) * 0.35;
+        rArmAng = -0.85 - Math.sin(t * 2.8) * 0.35;
+      } else if (sp.behavior === 'cheer') {
+        bounceY = -Math.abs(Math.sin(t)) * 3;
+        lArmAng = -2.1 + Math.sin(t * 2) * 0.4;
+        rArmAng = -1.0 + Math.cos(t * 2) * 0.3;
+      } else if (sp.behavior === 'clap') {
+        bounceY = -Math.abs(Math.sin(t * 1.6)) * 2.5;
+        const clap = Math.abs(Math.sin(t * 2.2)) * 0.45;
+        lArmAng = -0.7 + clap;
+        rArmAng = -2.4 - clap;
+      } else if (sp.behavior === 'camera') {
+        bounceY = -Math.abs(Math.sin(t * 0.6)) * 1.5;
+        lArmAng = -1.6;
+        rArmAng = -1.5;
+      }
+
+      ctx.save();
+      ctx.translate(sp.x + swayX, sp.y);
+
+      // Ground shadow
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.36)';
+      ctx.beginPath();
+      ctx.ellipse(0, 2, 16 * s, 4.5 * s, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.translate(0, bounceY);
+      ctx.scale(sp.facing * s, s);
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+
+      // Legs
+      ctx.strokeStyle = sp.pants;
+      ctx.lineWidth = 7;
+      ctx.beginPath();
+      ctx.moveTo(-6, -30);
+      ctx.lineTo(-8, 0);
+      ctx.moveTo(6, -30);
+      ctx.lineTo(8, 0);
+      ctx.stroke();
+
+      // Shoes
+      ctx.fillStyle = '#111';
+      ctx.fillRect(-12, -3, 9, 4);
+      ctx.fillRect(3, -3, 9, 4);
+
+      // Torso
+      ctx.fillStyle = sp.shirt;
+      ctx.strokeStyle = '#0b0c12';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.roundRect(-12, -58, 24, 30, 5);
+      ctx.fill();
+      ctx.stroke();
+
+      // Arms
+      ctx.strokeStyle = sp.shirt;
+      ctx.lineWidth = 6;
+      ctx.beginPath();
+      ctx.moveTo(-11, -52);
+      ctx.lineTo(-11 + Math.cos(lArmAng) * 18, -52 + Math.sin(lArmAng) * 18);
+      ctx.moveTo(11, -52);
+      ctx.lineTo(11 + Math.cos(rArmAng) * 18, -52 + Math.sin(rArmAng) * 18);
+      ctx.stroke();
+
+      // Fists
+      ctx.fillStyle = sp.skin;
+      ctx.beginPath();
+      ctx.arc(-11 + Math.cos(lArmAng) * 19, -52 + Math.sin(lArmAng) * 19, 3.5, 0, Math.PI * 2);
+      ctx.arc(11 + Math.cos(rArmAng) * 19, -52 + Math.sin(rArmAng) * 19, 3.5, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Head
+      ctx.fillStyle = sp.skin;
+      ctx.strokeStyle = '#0b0c12';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(0, -69, 10, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+
+      // Hair / Hat
+      ctx.fillStyle = sp.hair;
+      ctx.beginPath();
+      ctx.arc(0, -72, 10.2, Math.PI, Math.PI * 2);
+      ctx.fill();
+      if (sp.hat === 'cap') {
+        ctx.fillStyle = '#d9383a';
+        ctx.beginPath();
+        ctx.arc(0, -73, 10.5, Math.PI, Math.PI * 2);
+        ctx.fill();
+        ctx.fillRect(0, -74, 14, 3);
+      } else if (sp.hat === 'headband') {
+        ctx.fillStyle = '#ffd166';
+        ctx.fillRect(-10, -74, 20, 3.5);
+      } else if (sp.hat === 'beanie') {
+        ctx.fillStyle = '#3b4f78';
+        ctx.beginPath();
+        ctx.arc(0, -73, 10.5, Math.PI, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // Camera flash burst occasionally for camera NPC
+      if (sp.behavior === 'camera' && Math.floor(globalTime + sp.phase * 20) % 190 < 4) {
+        ctx.fillStyle = 'rgba(255, 250, 210, 0.85)';
+        ctx.beginPath();
+        ctx.arc(14, -64, 10, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      ctx.restore();
+    }
+    ctx.restore();
+  }
+
   function renderEffects() {
     // Floor Blood Splatters
     for (let i = bloodStains.length - 1; i >= 0; i--) {
@@ -2745,6 +2918,7 @@
     }
 
     drawStage();
+    drawBackgroundSpectators();
     if (
       (gameMode === 'ROUND_INTRO' ||
         gameMode === 'FIGHT' ||
