@@ -50,14 +50,9 @@
   });
   let bgProps = [];
   let bgSpectators = [];
-  const weatherSystem =
-    typeof WeatherSystem === 'function'
-      ? new WeatherSystem({
-          width: STAGE.width,
-          height: STAGE.height,
-          floorTopY: STAGE.floorTopY,
-          groundY: STAGE.groundY
-        })
+  const weatherOverlay =
+    typeof WeatherOverlay === 'function'
+      ? new WeatherOverlay(document.getElementById('weather-canvas'))
       : null;
 
   function spawnBackgroundProps() {
@@ -158,7 +153,7 @@
     const nextIdx = stageBgDeck.pop();
     lastStageBgIdx = nextIdx;
     currentStageBg = STAGE_BG_IMAGES[nextIdx];
-    if (weatherSystem) weatherSystem.resetForStage();
+    if (weatherOverlay) weatherOverlay.resetForStage();
     spawnBackgroundProps();
     spawnBackgroundSpectators();
   }
@@ -869,6 +864,7 @@
     if (onlineRole) return; // Never pause online multiplayer
     if (gameMode !== 'FIGHT' && gameMode !== 'ROUND_INTRO' && gameMode !== 'ROUND_END') return;
     isPaused = !isPaused;
+    if (weatherOverlay) weatherOverlay.setPaused(isPaused);
     pauseScreen.classList.toggle('hidden', !isPaused);
     SoundFX.playMenuSelect();
   }
@@ -889,6 +885,7 @@
     SoundFX.startBGM();
     SoundFX.playMenuConfirm();
     isPaused = false;
+    if (weatherOverlay) weatherOverlay.setPaused(false);
     standaloneCredits = false;
     onlineRole = null;
     OnlineManager.closeHostedRoom();
@@ -2993,7 +2990,6 @@
       updateHUD();
     }
 
-    if (weatherSystem) weatherSystem.update();
     ctx.save();
     if (shakeFrames > 0) {
       shakeFrames--;
@@ -3003,23 +2999,24 @@
     }
 
     drawStage();
-    if (weatherSystem) weatherSystem.drawBackgroundWeather(ctx);
     drawBackgroundProps();
     drawBackgroundSpectators();
-    if (
-      (gameMode === 'ROUND_INTRO' ||
-        gameMode === 'FIGHT' ||
-        gameMode === 'ROUND_END' ||
-        gameMode === 'POST_MATCH_BANNER' ||
-        gameMode === 'MATCH_END') &&
-      p1 &&
-      p2
-    ) {
+    const inActiveMatchScene =
+      gameMode === 'ROUND_INTRO' ||
+      gameMode === 'FIGHT' ||
+      gameMode === 'ROUND_END' ||
+      gameMode === 'POST_MATCH_BANNER' ||
+      gameMode === 'MATCH_END';
+    if (weatherOverlay) {
+      weatherOverlay.setActive(inActiveMatchScene);
+      weatherOverlay.setPaused(isPaused);
+      weatherOverlay.updateAndRender();
+    }
+    if (inActiveMatchScene && p1 && p2) {
       drawFighter(ctx, p1, globalTime);
       drawFighter(ctx, p2, globalTime);
       drawDebugBoxes();
       renderEffects();
-      if (weatherSystem) weatherSystem.drawForegroundWeather(ctx);
     } else if (gameMode === 'VICTORY_CUTSCENE' && p1) {
       drawTrophyCutscene(ctx, p1, globalTime);
       renderEffects();
