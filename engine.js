@@ -1521,6 +1521,26 @@
     };
   }
 
+  function applyTransformKnockback(fighter, opponent) {
+    const dir = opponent.x >= fighter.x ? 1 : -1;
+    opponent.health = Math.max(0, opponent.health - 6);
+    opponent.vx = dir * 8.5;
+    opponent.vy = -3.2;
+    opponent.state = 'hitstun';
+    opponent.hitstunFrames = 20;
+    opponent.hitFlash = 6;
+    SoundFX.playHit(false);
+    spawnHitSparks(opponent.x, opponent.y - 64, '#c99a3b', 12);
+    shockwaves.push({
+      x: (fighter.x + opponent.x) / 2,
+      y: opponent.y - 64,
+      r: 10,
+      maxR: 68,
+      color: fighter.data.palette.accent,
+      alpha: 0.9
+    });
+  }
+
   function triggerTransform(fighter, opponent) {
     if (fighter.isBeast || fighter.beastGauge < 50) return;
     fighter.isBeast = true;
@@ -1558,14 +1578,7 @@
       opponent.state !== 'ko' &&
       opponent.state !== 'transform'
     ) {
-      const dir = opponent.x >= fighter.x ? 1 : -1;
-      opponent.health = Math.max(0, opponent.health - 6);
-      opponent.vx = dir * 8.5;
-      opponent.vy = -3.2;
-      opponent.state = 'hitstun';
-      opponent.hitstunFrames = 20;
-      opponent.hitFlash = 6;
-      spawnHitSparks(opponent.x, opponent.y - 64, '#c99a3b', 12);
+      applyTransformKnockback(fighter, opponent);
     }
   }
 
@@ -1579,6 +1592,16 @@
     }
     if (f.state === 'transform') {
       f.stateFrame++;
+      if (
+        opponent &&
+        opponent.state !== 'ko' &&
+        opponent.state !== 'transform' &&
+        opponent.state !== 'hitstun' &&
+        Math.abs(f.x - opponent.x) < 76 &&
+        Math.abs(f.y - opponent.y) < 105
+      ) {
+        applyTransformKnockback(f, opponent);
+      }
       if (f.stateFrame >= 120) f.state = 'idle';
       return;
     }
