@@ -2964,8 +2964,13 @@
     if (isLocalPredicted) {
       const dx = snap.x - f.x;
       const dy = snap.y - f.y;
-      if (Math.abs(dx) > 110) f.x = snap.x;
-      else if (Math.abs(dx) > 32) f.x += dx * 0.35;
+      // Avoid rubber-banding during normal movement/RTT lead; only correct large drift or when idle
+      if (Math.abs(dx) > 140) f.x = snap.x;
+      else if (Math.abs(dx) > 75) f.x += dx * 0.2;
+      else if (f.state === 'idle' && Math.abs(f.vx) < 0.2 && Math.abs(snap.vx) < 0.2 && Math.abs(dx) > 4) {
+        f.x += dx * 0.18;
+      }
+
       if (Math.abs(dy) > 95) {
         f.y = snap.y;
         f.vy = snap.vy;
@@ -3005,20 +3010,15 @@
       return;
     }
 
-    // Remote opponent (Host p1): smooth interpolation for position, authoritative state
-    const dx = snap.x - f.x;
-    const dy = snap.y - f.y;
-    if (Math.abs(dx) > 95) f.x = snap.x;
-    else f.x += dx * 0.5;
-    if (Math.abs(dy) > 75) {
-      f.y = snap.y;
-      f.vy = snap.vy;
-    } else {
-      f.y += dy * 0.5;
-      f.vy = snap.vy;
-    }
+    // Remote opponent (Host p1): store net target for smooth 60 FPS per-frame glide
+    f._netX = snap.x;
+    f._netY = snap.y;
+    if (Math.abs(snap.x - f.x) > 120) f.x = snap.x;
+    if (Math.abs(snap.y - f.y) > 95) f.y = snap.y;
 
+    const stateChanged = f.state !== snap.state;
     f.vx = snap.vx;
+    f.vy = snap.vy;
     f.facing = snap.facing;
     f.health = snap.health;
     f.trailHealth = snap.trailHealth;
@@ -3026,10 +3026,14 @@
     f.isBeast = snap.isBeast;
     f.roundsWon = snap.roundsWon;
     f.state = snap.state;
-    f.stateFrame = snap.stateFrame;
+    if (stateChanged || Math.abs((f.stateFrame || 0) - (snap.stateFrame || 0)) > 4) {
+      f.stateFrame = snap.stateFrame;
+    }
+    if (stateChanged || Math.abs((f.walkFrame || 0) - (snap.walkFrame || 0)) > 5) {
+      f.walkFrame = snap.walkFrame;
+    }
     f.hitstunFrames = snap.hitstunFrames ?? 0;
     f.knockdownFrames = snap.knockdownFrames ?? 0;
-    f.walkFrame = snap.walkFrame;
     f.comboCount = snap.comboCount;
     f.hitFlash = snap.hitFlash;
     f.blockRecoil = snap.blockRecoil;
@@ -3155,7 +3159,20 @@
         updateFighterInput(p2, p1);
       }
       if (p1 && p2) {
+        // Smoothly advance remote Host (p1) animation frames & glide toward latest net target
+        if (p1.state === 'walk') p1.walkFrame = (p1.walkFrame || 0) + 1;
+        else if (
+          p1.state === 'punch' ||
+          p1.state === 'kick' ||
+          p1.state === 'low_punch' ||
+          p1.state === 'low_kick' ||
+          p1.state === 'transform'
+        ) {
+          p1.stateFrame = (p1.stateFrame || 0) + 1;
+        }
         applyPhysics(p1);
+        if (typeof p1._netX === 'number') p1.x += (p1._netX - p1.x) * 0.28;
+        if (typeof p1._netY === 'number') p1.y += (p1._netY - p1.y) * 0.28;
         applyPhysics(p2);
         resolvePushbox();
       }
