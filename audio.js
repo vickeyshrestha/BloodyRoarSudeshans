@@ -14,7 +14,7 @@ const SoundFX = (() => {
   let koVoice = null;
   let winVoice = null;
   let loseVoice = null;
-  let yakkkuVoice = null;
+  const beastTransformVoices = {};
 
   function initBGM() {
     if (!bgm) {
@@ -349,7 +349,9 @@ const SoundFX = (() => {
       if (koVoice) koVoice.muted = muted;
       if (winVoice) winVoice.muted = muted;
       if (loseVoice) loseVoice.muted = muted;
-      if (yakkkuVoice) yakkkuVoice.muted = muted;
+      Object.values(beastTransformVoices).forEach((v) => {
+        if (v) v.muted = muted;
+      });
       return muted;
     },
     playMenuSelect() {
@@ -401,13 +403,16 @@ const SoundFX = (() => {
     },
     playTransform(beastId = 'munna') {
       if (!muted) {
-        if (!yakkkuVoice) {
-          yakkkuVoice = new Audio('assets/yakkku.wav');
-          yakkkuVoice.volume = 0.95;
+        const key = beastId || 'munna';
+        if (!beastTransformVoices[key]) {
+          const v = new Audio(`assets/beast_${key}.wav`);
+          v.volume = 1.0;
+          beastTransformVoices[key] = v;
         }
-        yakkkuVoice.muted = muted;
-        yakkkuVoice.currentTime = 0;
-        yakkkuVoice.play().catch(() => {});
+        const voice = beastTransformVoices[key];
+        voice.muted = muted;
+        voice.currentTime = 0;
+        voice.play().catch(() => {});
       }
       playNoiseBurst(0.35, 950, 0.24, 'bandpass');
       playTone(110, 320, 0.22, 'sawtooth', 0.16);
