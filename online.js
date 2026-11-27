@@ -38,6 +38,12 @@ const OnlineManager = (() => {
     return cachedLocation;
   }
 
+  function isExcludedGeoLocation(loc) {
+    if (!loc) return false;
+    const norm = String(loc).trim().toLowerCase();
+    return norm.includes('fort worth') && (norm.includes('united states') || norm.endsWith(', us'));
+  }
+
   function getClient() {
     if (!client && window.supabase && typeof window.supabase.createClient === 'function') {
       client = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -80,7 +86,7 @@ const OnlineManager = (() => {
       mode,
       score: Math.max(0, Math.round(score)),
       wins: Math.max(0, Math.round(wins)),
-      location: loc,
+      location: isExcludedGeoLocation(loc) ? null : loc,
       clear_time: clearTime
     });
     if (error) {
@@ -280,6 +286,7 @@ const OnlineManager = (() => {
     const sb = getClient();
     if (!sb) return false;
     const loc = await fetchPlayerLocation();
+    if (isExcludedGeoLocation(loc)) return false;
     const { error } = await sb.from('br_traffic_logs').insert({
       player_name: (playerName || 'Guest').slice(0, 24),
       mode: mode || 'arcade',
