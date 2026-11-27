@@ -767,6 +767,7 @@
 
   function goToMenu() {
     SoundFX.stopBossBGM();
+    SoundFX.stopBattleBGM();
     SoundFX.startBGM();
     SoundFX.playMenuConfirm();
     isPaused = false;
@@ -956,6 +957,7 @@
   }
 
   async function goToOnline() {
+    SoundFX.startBattleBGM();
     SoundFX.playMenuConfirm();
     populateOnlineFighters();
     syncPlayerNameFromInput(playerName);
@@ -1092,6 +1094,7 @@
   }
 
   function showBossChallenge() {
+    SoundFX.startBossBGM();
     gameMode = 'BOSS_INTRO';
     btnBossMenu.disabled = false;
     btnBossMenu.textContent = 'RUN AWAY';
@@ -1124,6 +1127,7 @@
   }
 
   function goToSelect() {
+    SoundFX.startBattleBGM();
     SoundFX.playMenuConfirm();
     gameMode = 'SELECT';
     hudEl.classList.add('hidden');
@@ -1215,7 +1219,7 @@
       p2.trailHealth = p2.maxHealth;
       SoundFX.startBossBGM();
     } else {
-      SoundFX.stopBossBGM();
+      SoundFX.startBattleBGM();
     }
     roundNumber = 1;
     if (onlineRole) liveMatchScore = 0;

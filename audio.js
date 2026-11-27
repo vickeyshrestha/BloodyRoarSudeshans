@@ -6,8 +6,9 @@ const SoundFX = (() => {
   let muted = false;
   let bgm = null;
   let bgmStarted = false;
+  let battleBgm = null;
   let bossBgm = null;
-  let bossBgmActive = false;
+  let currentBgmMode = 'menu'; // 'menu' | 'battle' | 'boss'
   const roundSounds = {};
   let fightVoice = null;
   let koVoice = null;
@@ -22,6 +23,16 @@ const SoundFX = (() => {
       bgm.muted = muted;
     }
     return bgm;
+  }
+
+  function initBattleBGM() {
+    if (!battleBgm) {
+      battleBgm = new Audio('assets/battle_bgm.mp3');
+      battleBgm.loop = true;
+      battleBgm.volume = 0.40;
+      battleBgm.muted = muted;
+    }
+    return battleBgm;
   }
 
   function initBossBGM() {
@@ -242,12 +253,16 @@ const SoundFX = (() => {
       return muted;
     },
     startBGM() {
-      if (bossBgmActive) {
+      if (currentBgmMode === 'boss') {
         const bossMusic = initBossBGM();
         bossMusic.muted = muted;
-        if (bossMusic.paused) {
-          bossMusic.play().catch(() => {});
-        }
+        if (bossMusic.paused) bossMusic.play().catch(() => {});
+        return;
+      }
+      if (currentBgmMode === 'battle') {
+        const battleMusic = initBattleBGM();
+        battleMusic.muted = muted;
+        if (battleMusic.paused) battleMusic.play().catch(() => {});
         return;
       }
       const music = initBGM();
@@ -258,10 +273,37 @@ const SoundFX = (() => {
         }).catch(() => {});
       }
     },
+    startBattleBGM() {
+      if (currentBgmMode === 'battle' && battleBgm && !battleBgm.paused) return;
+      currentBgmMode = 'battle';
+      if (bgm && !bgm.paused) bgm.pause();
+      if (bossBgm && !bossBgm.paused) {
+        bossBgm.pause();
+        bossBgm.currentTime = 0;
+      }
+      const battleMusic = initBattleBGM();
+      battleMusic.muted = muted;
+      if (battleMusic.paused) {
+        battleMusic.currentTime = 0;
+        battleMusic.play().catch(() => {});
+      }
+    },
+    stopBattleBGM() {
+      if (currentBgmMode !== 'battle') return;
+      currentBgmMode = 'menu';
+      if (battleBgm) {
+        battleBgm.pause();
+        battleBgm.currentTime = 0;
+      }
+      this.startBGM();
+    },
     startBossBGM() {
-      bossBgmActive = true;
-      if (bgm && !bgm.paused) {
-        bgm.pause();
+      if (currentBgmMode === 'boss' && bossBgm && !bossBgm.paused) return;
+      currentBgmMode = 'boss';
+      if (bgm && !bgm.paused) bgm.pause();
+      if (battleBgm && !battleBgm.paused) {
+        battleBgm.pause();
+        battleBgm.currentTime = 0;
       }
       const bossMusic = initBossBGM();
       bossMusic.muted = muted;
@@ -269,8 +311,8 @@ const SoundFX = (() => {
       bossMusic.play().catch(() => {});
     },
     stopBossBGM() {
-      if (!bossBgmActive) return;
-      bossBgmActive = false;
+      if (currentBgmMode !== 'boss') return;
+      currentBgmMode = 'menu';
       if (bossBgm) {
         bossBgm.pause();
         bossBgm.currentTime = 0;
@@ -281,13 +323,19 @@ const SoundFX = (() => {
       muted = !muted;
       if (bgm) {
         bgm.muted = muted;
-        if (!muted && !bossBgmActive && bgm.paused && bgmStarted) {
+        if (!muted && currentBgmMode === 'menu' && bgm.paused && bgmStarted) {
           bgm.play().catch(() => {});
+        }
+      }
+      if (battleBgm) {
+        battleBgm.muted = muted;
+        if (!muted && currentBgmMode === 'battle' && battleBgm.paused) {
+          battleBgm.play().catch(() => {});
         }
       }
       if (bossBgm) {
         bossBgm.muted = muted;
-        if (!muted && bossBgmActive && bossBgm.paused) {
+        if (!muted && currentBgmMode === 'boss' && bossBgm.paused) {
           bossBgm.play().catch(() => {});
         }
       }
