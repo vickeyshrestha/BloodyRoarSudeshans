@@ -1246,6 +1246,7 @@
   function goToSelect() {
     SoundFX.startBattleBGM();
     SoundFX.playMenuConfirm();
+    SoundFX.playChooseFighter();
     gameMode = 'SELECT';
     hudEl.classList.add('hidden');
     showOnlyScreen(selectScreen);
@@ -1368,6 +1369,7 @@
     vsTimer = 240; // ~4 seconds at 60 FPS
     hudEl.classList.add('hidden');
     showOnlyScreen(vsScreen);
+    SoundFX.playVsAnnounce();
   }
 
   function startRound() {

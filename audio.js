@@ -14,6 +14,8 @@ const SoundFX = (() => {
   let koVoice = null;
   let winVoice = null;
   let loseVoice = null;
+  let chooseFighterVoice = null;
+  let vsBloodyBathVoice = null;
   const beastTransformVoices = {};
 
   function initBGM() {
@@ -349,6 +351,8 @@ const SoundFX = (() => {
       if (koVoice) koVoice.muted = muted;
       if (winVoice) winVoice.muted = muted;
       if (loseVoice) loseVoice.muted = muted;
+      if (chooseFighterVoice) chooseFighterVoice.muted = muted;
+      if (vsBloodyBathVoice) vsBloodyBathVoice.muted = muted;
       Object.values(beastTransformVoices).forEach((v) => {
         if (v) v.muted = muted;
       });
@@ -417,6 +421,26 @@ const SoundFX = (() => {
       playNoiseBurst(0.35, 950, 0.24, 'bandpass');
       playTone(110, 320, 0.22, 'sawtooth', 0.16);
       playBeastSound(beastId, false);
+    },
+    playChooseFighter() {
+      if (muted) return;
+      if (!chooseFighterVoice) {
+        chooseFighterVoice = new Audio('assets/choose_fighter.wav');
+        chooseFighterVoice.volume = 0.95;
+      }
+      chooseFighterVoice.muted = muted;
+      chooseFighterVoice.currentTime = 0;
+      chooseFighterVoice.play().catch(() => {});
+    },
+    playVsAnnounce() {
+      if (muted) return;
+      if (!vsBloodyBathVoice) {
+        vsBloodyBathVoice = new Audio('assets/vs_bloody_bath.wav');
+        vsBloodyBathVoice.volume = 0.98;
+      }
+      vsBloodyBathVoice.muted = muted;
+      vsBloodyBathVoice.currentTime = 0;
+      vsBloodyBathVoice.play().catch(() => {});
     },
     playRoundAnnounce(roundNum = 1) {
       if (muted) return;
