@@ -33,7 +33,42 @@
     img.src = `assets/sprites/npc_hoodie_${n}.png`;
     return img;
   });
+  const STAGE_PROP_DEFS = [
+    { src: 'assets/sprites/prop_hatchback.png', targetH: 108 },
+    { src: 'assets/sprites/prop_armored.png', targetH: 126 },
+    { src: 'assets/sprites/prop_jet.png', targetH: 122 },
+    { src: 'assets/sprites/prop_cargo.png', targetH: 132 }
+  ].map((def) => {
+    const img = new Image();
+    img.src = def.src;
+    return { img, targetH: def.targetH };
+  });
+  let bgProps = [];
   let bgSpectators = [];
+
+  function spawnBackgroundProps() {
+    bgProps = [];
+    const count = isMobileDevice() ? 1 : (Math.random() < 0.55 ? 2 : 1);
+    const deck = STAGE_PROP_DEFS.map((_, idx) => idx);
+    for (let i = deck.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [deck[i], deck[j]] = [deck[j], deck[i]];
+    }
+    const zones = count === 1
+      ? [Math.random() < 0.5 ? [140, 290] : [670, 820]]
+      : [[120, 270], [690, 840]];
+    for (let i = 0; i < count; i++) {
+      const propIdx = deck[i % deck.length];
+      const [minX, maxX] = zones[i];
+      const x = minX + Math.random() * (maxX - minX);
+      bgProps.push({
+        x,
+        y: STAGE.floorTopY + 8 + Math.random() * 6,
+        propIdx,
+        facing: x < STAGE.width / 2 ? 1 : -1
+      });
+    }
+  }
 
   function spawnBackgroundSpectators() {
     bgSpectators = [];
@@ -82,6 +117,7 @@
     const nextIdx = stageBgDeck.pop();
     lastStageBgIdx = nextIdx;
     currentStageBg = STAGE_BG_IMAGES[nextIdx];
+    spawnBackgroundProps();
     spawnBackgroundSpectators();
   }
 
@@ -2454,6 +2490,26 @@
     renderStageToContext(ctx);
   }
 
+  function drawBackgroundProps() {
+    if (!bgProps.length) return;
+    ctx.save();
+    for (let i = 0; i < bgProps.length; i++) {
+      const prop = bgProps[i];
+      const def = STAGE_PROP_DEFS[prop.propIdx];
+      if (!def || !def.img || !def.img.complete || def.img.naturalWidth <= 0) continue;
+      const aspect = def.img.naturalWidth / def.img.naturalHeight;
+      const drawH = def.targetH;
+      const drawW = drawH * aspect;
+      ctx.save();
+      ctx.translate(prop.x, prop.y);
+      ctx.globalAlpha = 0.9;
+      ctx.scale(prop.facing, 1);
+      ctx.drawImage(def.img, -drawW / 2, -drawH, drawW, drawH);
+      ctx.restore();
+    }
+    ctx.restore();
+  }
+
   function drawBackgroundSpectators() {
     if (!bgSpectators.length) return;
     const excited =
@@ -2844,6 +2900,7 @@
     }
 
     drawStage();
+    drawBackgroundProps();
     drawBackgroundSpectators();
     if (
       (gameMode === 'ROUND_INTRO' ||
