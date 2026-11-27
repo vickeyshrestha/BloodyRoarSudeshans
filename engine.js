@@ -2337,7 +2337,9 @@
       postMatchCallback = () => {
         roundNumber++;
         startRound();
+        if (onlineRole === 'host') broadcastOnlineState();
       };
+      if (onlineRole === 'host') broadcastOnlineState();
     }
   }
 
@@ -3008,8 +3010,72 @@
     };
   }
 
+  function triggerGuestNetFeedback(f, snap) {
+    if (!f || !snap || !p1 || !p2) return;
+    const impactX = (p1.x + p2.x) / 2;
+    const impactY = f.y - 105;
+
+    if (snap.isBeast && !f.isBeast) {
+      SoundFX.playTransform(f.data.id);
+      showBeastActivateBanner(f.data, f === p2);
+      shockwaves.push({
+        x: f.x,
+        y: f.y - 64,
+        r: 18,
+        maxR: 135,
+        color: f.data.palette.accent,
+        alpha: 1
+      });
+      spawnFloatingText(
+        f.x,
+        f.y - 125,
+        `BEAST: ${f.data.beastName.toUpperCase()}!`,
+        f.data.palette.accent
+      );
+    }
+
+    if (snap.health < f.health && snap.hitFlash > 0) {
+      const dmg = Math.max(1, Math.round(f.health - snap.health));
+      const heavy = dmg >= 10;
+      const dir = f === p2 ? p1.facing : p2.facing;
+      SoundFX.playHit(heavy);
+      SoundFX.playHitVoice(f.data.id, f.isBeast);
+      spawnHitSparks(impactX, impactY, heavy ? '#ff4d6d' : '#ffd369', heavy ? 18 : 11);
+      if (gameOptions.bloodGore) {
+        spawnBloodSpray(impactX, impactY, dir, heavy ? 22 : 12);
+      }
+      starbursts.push({
+        x: impactX,
+        y: impactY,
+        radius: heavy ? 52 : 34,
+        color: heavy ? '#ff3b5c' : '#ffe169',
+        life: heavy ? 10 : 7,
+        maxLife: heavy ? 10 : 7,
+        angle: Math.random() * Math.PI
+      });
+      spawnFloatingText(f.x, f.y - 148, `-${dmg}`, heavy ? '#e04f5f' : '#e6e8ee');
+      if (heavy) {
+        shakeFrames = 8;
+        shakeIntensity = 5;
+      }
+    } else if (snap.blockRecoil > 0 && f.blockRecoil === 0) {
+      SoundFX.playBlock();
+      spawnHitSparks(impactX, impactY, '#5ea8c9', 10);
+      shockwaves.push({
+        x: impactX,
+        y: impactY,
+        r: 12,
+        maxR: 64,
+        color: '#bfefff',
+        alpha: 0.95
+      });
+      spawnFloatingText(f.x, f.y - 150, 'BLOCK!', '#5ea8c9');
+    }
+  }
+
   function applyFighterSnapshot(f, snap, isLocalPredicted) {
     if (!f || !snap) return;
+    triggerGuestNetFeedback(f, snap);
     if (isLocalPredicted) {
       const dx = snap.x - f.x;
       const dy = snap.y - f.y;
@@ -3095,6 +3161,7 @@
       gameMode,
       roundNumber,
       roundTimer,
+      lastWinner: !lastRoundWinner ? 'draw' : lastRoundWinner === p1 ? 'p1' : 'p2',
       stageIdx: currentStageBgIdx,
       weather: weatherSystem ? weatherSystem.preset : 'sunny',
       p1: packFighterState(p1),
@@ -3112,23 +3179,52 @@
     ) {
       pickRandomStageBackground(st.stageIdx, st.weather || null);
     }
+    const rNum = st.roundNumber ?? roundNumber;
     if (st.gameMode && st.gameMode !== gameMode) {
       const prevMode = gameMode;
       gameMode = st.gameMode;
-      if (gameMode === 'ROUND_INTRO' || gameMode === 'FIGHT') {
+      if (gameMode === 'ROUND_INTRO') {
         bannerTimer = 0;
         postMatchCallback = null;
-        if (fightBanner) fightBanner.classList.add('hidden');
         showOnlyScreen(null);
         hudEl.classList.remove('hidden');
-        if (gameMode === 'ROUND_INTRO' && (prevMode === 'VS' || prevMode === 'MATCH_END' || prevMode === 'POST_MATCH_BANNER')) {
-          SoundFX.playRoundAnnounce(st.roundNumber ?? roundNumber);
-        } else if (gameMode === 'FIGHT' && prevMode === 'ROUND_INTRO') {
-          SoundFX.playRoundStart();
+        showBanner(rNum === 3 ? 'FINAL ROUND' : `ROUND ${rNum}`, 'GET READY!', 110);
+        SoundFX.playRoundAnnounce(rNum);
+      } else if (gameMode === 'FIGHT') {
+        bannerTimer = 0;
+        postMatchCallback = null;
+        showOnlyScreen(null);
+        hudEl.classList.remove('hidden');
+        showBanner('FIGHT!', '', 150);
+        SoundFX.playRoundStart();
+      } else if (gameMode === 'ROUND_END') {
+        SoundFX.playKO();
+        shakeFrames = 18;
+        shakeIntensity = 9;
+        if ((st.roundTimer ?? roundTimer) <= 0) {
+          const winnerName =
+            st.lastWinner === 'p2'
+              ? p2.data.name
+              : st.lastWinner === 'p1'
+                ? p1.data.name
+                : '';
+          showBanner('TIME OVER!', winnerName ? `${winnerName.toUpperCase()} WINS ROUND` : 'DRAW ROUND', 180);
+        } else {
+          const winnerName = st.lastWinner === 'p2' ? p2.data.name : p1.data.name;
+          showBanner('K.O.!', `${winnerName.toUpperCase()} TAKES THE ROUND`, 300);
+        }
+      } else if (gameMode === 'POST_MATCH_BANNER' && prevMode === 'ROUND_END') {
+        if (st.lastWinner === 'draw') {
+          showBanner('DRAW ROUND!', `ROUND ${rNum} TIED`, 180);
+        } else {
+          const guestWon = st.lastWinner === 'p2';
+          showBanner(guestWon ? 'YOU WIN!' : 'YOU LOSE!', `ROUND ${rNum} COMPLETE`, 180);
+          if (guestWon) SoundFX.playWin();
+          else SoundFX.playLose();
         }
       }
     }
-    roundNumber = st.roundNumber ?? roundNumber;
+    roundNumber = rNum;
     roundTimer = st.roundTimer ?? roundTimer;
     applyFighterSnapshot(p1, st.p1, false);
     applyFighterSnapshot(p2, st.p2, true);
