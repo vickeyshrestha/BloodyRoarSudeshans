@@ -1243,8 +1243,14 @@ kbd {
   margin-bottom: 12px;
 }
 
+#select-screen {
+  justify-content: flex-start;
+  padding: 10px 16px 48px;
+  overflow-y: auto;
+}
+
 .select-header h2 {
-  font-size: 26px;
+  font-size: 22px;
   font-weight: 900;
   letter-spacing: 0.1em;
   color: var(--accent-gold);
@@ -1259,20 +1265,20 @@ kbd {
 
 .roster-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
   width: 100%;
-  max-width: 860px;
+  max-width: 910px;
 }
 
 .fighter-card {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   background: linear-gradient(145deg, #161d31, #0f1422);
   border: 3px solid #2b3554;
   border-radius: 10px;
-  padding: 8px 10px;
+  padding: 6px 8px;
   cursor: pointer;
   transition: transform 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease;
 }
@@ -1290,14 +1296,14 @@ kbd {
 
 .card-portrait-wrap {
   position: relative;
-  width: 78px;
-  height: 78px;
+  width: 62px;
+  height: 62px;
   flex-shrink: 0;
 }
 
 .card-portrait {
-  width: 78px;
-  height: 78px;
+  width: 62px;
+  height: 62px;
   background: #0c101d;
   border: 2px solid #000;
   border-radius: 8px;
@@ -1987,9 +1993,14 @@ kbd {
     width: 24px;
     height: 24px;
   }
+  #select-screen {
+    padding: 10px 10px 60px;
+  }
   .select-footer {
     flex-direction: column;
     gap: 8px;
+    padding: 8px 10px;
+    margin-top: 8px;
     text-align: center;
   }
   .vs-container {

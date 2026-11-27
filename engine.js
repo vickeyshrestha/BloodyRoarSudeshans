@@ -815,10 +815,11 @@
 
   function handleSelectKey(code) {
     let next = selectedIndex;
+    const cols = window.innerWidth <= 900 ? 2 : 4;
     if (code === 'ArrowRight') next = (selectedIndex + 1) % FIGHTERS.length;
     else if (code === 'ArrowLeft') next = (selectedIndex - 1 + FIGHTERS.length) % FIGHTERS.length;
-    else if (code === 'ArrowDown') next = (selectedIndex + 3) % FIGHTERS.length;
-    else if (code === 'ArrowUp') next = (selectedIndex - 3 + FIGHTERS.length) % FIGHTERS.length;
+    else if (code === 'ArrowDown') next = (selectedIndex + cols) % FIGHTERS.length;
+    else if (code === 'ArrowUp') next = (selectedIndex - cols + FIGHTERS.length) % FIGHTERS.length;
     else if (code === 'Enter' || code === 'Space') {
       startMatchFromSelect();
       return;
