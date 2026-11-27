@@ -1480,6 +1480,35 @@
   }
 
   function startMatch(f1Data, f2Data) {
+    bannerTimer = 0;
+    postMatchCallback = null;
+    if (fightBanner) fightBanner.classList.add('hidden');
+    hitstopFrames = 0;
+    timerTicks = 0;
+    isPaused = false;
+    lastGuestHudSig = '';
+    lastHudTimer = -1;
+    remoteInput = {
+      left: false,
+      right: false,
+      up: false,
+      down: false,
+      block: false,
+      punch: false,
+      kick: false,
+      transform: false
+    };
+    lastSentGuestInput.left = false;
+    lastSentGuestInput.right = false;
+    lastSentGuestInput.up = false;
+    lastSentGuestInput.down = false;
+    bloodDrops = [];
+    bloodStains = [];
+    shockwaves = [];
+    starbursts = [];
+    particles = [];
+    floatingTexts = [];
+
     pickRandomStageBackground();
     p1 = createFighterState(f1Data, 260, 1, false);
     p2 = createFighterState(f2Data, 700, -1, !onlineRole);
@@ -3060,6 +3089,19 @@
     f.blockRecoil = snap.blockRecoil;
   }
 
+  function broadcastOnlineState() {
+    if (onlineRole !== 'host' || !p1 || !p2) return;
+    OnlineManager.sendBroadcast('state', {
+      gameMode,
+      roundNumber,
+      roundTimer,
+      stageIdx: currentStageBgIdx,
+      weather: weatherSystem ? weatherSystem.preset : 'sunny',
+      p1: packFighterState(p1),
+      p2: packFighterState(p2)
+    });
+  }
+
   let lastGuestHudSig = '';
   function applyRemoteState(st) {
     if (!st || onlineRole !== 'guest') return;
@@ -3071,10 +3113,19 @@
       pickRandomStageBackground(st.stageIdx, st.weather || null);
     }
     if (st.gameMode && st.gameMode !== gameMode) {
+      const prevMode = gameMode;
       gameMode = st.gameMode;
       if (gameMode === 'ROUND_INTRO' || gameMode === 'FIGHT') {
+        bannerTimer = 0;
+        postMatchCallback = null;
+        if (fightBanner) fightBanner.classList.add('hidden');
         showOnlyScreen(null);
         hudEl.classList.remove('hidden');
+        if (gameMode === 'ROUND_INTRO' && (prevMode === 'VS' || prevMode === 'MATCH_END' || prevMode === 'POST_MATCH_BANNER')) {
+          SoundFX.playRoundAnnounce(st.roundNumber ?? roundNumber);
+        } else if (gameMode === 'FIGHT' && prevMode === 'ROUND_INTRO') {
+          SoundFX.playRoundStart();
+        }
       }
     }
     roundNumber = st.roundNumber ?? roundNumber;
@@ -3082,7 +3133,7 @@
     applyFighterSnapshot(p1, st.p1, false);
     applyFighterSnapshot(p2, st.p2, true);
     const sig = `${roundNumber}|${roundTimer}|${p1?.health}|${p2?.health}|${p1?.beastGauge}|${p2?.beastGauge}|${p1?.isBeast}|${p2?.isBeast}|${p1?.roundsWon}|${p2?.roundsWon}`;
-    if (sig !== lastGuestHudSig) {
+    if (sig !== lastGuestHudSig || lastHudTimer !== roundTimer) {
       lastGuestHudSig = sig;
       updateHUD();
     }
@@ -3101,10 +3152,15 @@
     globalTime++;
 
     if (gameMode === 'VS') {
-      vsTimer--;
-      if (vsTimer <= 0) {
-        if (!onlineRole && arcadeStage === 5) showBossChallenge();
-        else startRound();
+      if (onlineRole !== 'guest') {
+        vsTimer--;
+        if (vsTimer <= 0) {
+          if (!onlineRole && arcadeStage === 5) showBossChallenge();
+          else {
+            startRound();
+            if (onlineRole === 'host') broadcastOnlineState();
+          }
+        }
       }
     }
 
@@ -3142,6 +3198,7 @@
         gameMode = 'FIGHT';
         showBanner('FIGHT!', '', 150); // 2.5 seconds hold for FIGHT!
         SoundFX.playRoundStart();
+        if (onlineRole === 'host') broadcastOnlineState();
       }
     }
 
@@ -3213,6 +3270,7 @@
             timerTicks = 0;
             roundTimer = Math.max(0, roundTimer - 1);
             if (roundTimer === 0) handleTimeOver();
+            else if (onlineRole === 'host') broadcastOnlineState();
           }
           updateFighterInput(p1, p2);
           updateFighterInput(p2, p1);
@@ -3226,15 +3284,7 @@
       if (onlineRole === 'host') {
         onlineSyncTick++;
         if (onlineSyncTick % 3 === 0) {
-          OnlineManager.sendBroadcast('state', {
-            gameMode,
-            roundNumber,
-            roundTimer,
-            stageIdx: currentStageBgIdx,
-            weather: weatherSystem ? weatherSystem.preset : 'sunny',
-            p1: packFighterState(p1),
-            p2: packFighterState(p2)
-          });
+          broadcastOnlineState();
         }
       }
     }
