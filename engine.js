@@ -1103,11 +1103,7 @@
     ];
     quoteEl.textContent = bossQuotes[Math.floor(Math.random() * bossQuotes.length)];
     const bossCanvas = document.getElementById('boss-challenge-canvas');
-    drawPortrait(bossCanvas, p2.data, true);
-    const bossEntry = SPRITE_CACHE[`${p2.data.id}_beast`];
-    if (bossEntry && !bossEntry.loaded && !bossEntry.error) {
-      bossEntry.img.addEventListener('load', () => drawPortrait(bossCanvas, p2.data, true), { once: true });
-    }
+    drawPortrait(bossCanvas, p2.data, false);
     hudEl.classList.add('hidden');
     showOnlyScreen(bossChallengeScreen);
     SoundFX.playTransform(p2.data.id);
