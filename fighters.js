@@ -181,7 +181,7 @@ const FIGHTERS = [
     id: 'beemal',
     name: 'Beemal K.C.',
     beastName: 'Saadhu The Monk',
-    portraitSrc: 'assets/sprites/beemal_human.png',
+    portraitSrc: 'assets/Beemal.jpg',
     desc: 'Disciplined maroon-clad striker who awakens into Saadhu The Monk with serene power.',
     stats: { speed: 8, power: 8, range: 7, health: 105, jumpForce: -14.0, scale: 1.0 },
     palette: {
